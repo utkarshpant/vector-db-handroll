@@ -32,15 +32,13 @@ def _populate_library(store: VectorStore, lib_id: UUID, embed: Callable[[str, in
     Returns a dict; `{chunk_id: text}`.
     """
     lib = store.get_library(lib_id)
-    chunk_map = {}
     for d in range(3):
         doc = Document(title=f"{doc_prefix}_doc_{d}")
-        lib.add_document(doc)
         for c in range(2):
             text = f"{doc_prefix}_doc_{d}_chunk_{c}"
-            chunk = Chunk(text=text, embedding=embed(text))
-            lib.add_chunk(chunk, document_id=doc.id)
-            chunk_map[chunk.id] = text
+            doc.add_chunk(Chunk(text=text, embedding=embed(text)))
+        lib.add_document(doc)
+    chunk_map = {chunk.id: chunk.text for doc in lib.get_all_documents() for chunk in doc.get_all_chunks()}
     return chunk_map
 
 # parameters for this test: brute force index and ball tree index

@@ -65,6 +65,10 @@ class Library(BaseModel):
         if len(self.documents) == original_len:
             raise KeyError(f"No document with id={doc_id} found")
 
+    def get_all_documents(self) -> Tuple[Document, ...]:
+        """Return all Documents in this Library."""
+        return tuple(self.documents)
+
     def add_chunk(
         self,
         chunk: Chunk,
@@ -100,18 +104,19 @@ class Library(BaseModel):
                 continue
         raise KeyError(f"No chunk with id={chunk_id} in any document")
 
-    def get_all_embeddings(self) -> List[np.ndarray]:
+    def get_all_chunks(self) -> List[Chunk]:
         """Flatten all chunk embeddings in document order."""
-        vectors: List[np.ndarray] = []
-        for d in self.documents:
-            vectors.extend(d.get_all_vectors())
+        vectors: List[Chunk] = []
+        for document in self.documents:
+            chunks = document.get_all_chunks()
+            vectors.extend(chunks)
         return vectors
 
     def build_index(self, index: BaseIndex) -> None:
         """
         (Re)build the in-memory index for this Library.
         """
-        all_vectors = self.get_all_embeddings()
+        all_vectors = [c.embedding for c in self.get_all_chunks()]
         all_ids = [chunk.id for d in self.documents for chunk in d.chunks]
         index.build(all_vectors, all_ids)
         self.index = index

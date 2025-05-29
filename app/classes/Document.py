@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import datetime, timezone
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 from uuid import uuid4, UUID
 
 import numpy as np
@@ -62,11 +62,11 @@ class Document(BaseModel):
         if len(self.chunks) == original_len:
             raise KeyError(f"No chunk with id={chunk_id} found")
 
-    def get_all_vectors(self) -> List[np.ndarray]:
+    def get_all_chunks(self) -> Tuple[Chunk, ...]:
         """
         Get all chunk embeddings as a list of numpy arrays.
         """
-        return [c.vector for c in self.chunks]
+        return tuple(self.chunks)
 
     def to_dict(self) -> dict[str, Any]:
         """
