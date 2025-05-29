@@ -1,7 +1,7 @@
 import numpy as np
 from uuid import uuid4
 from pytest import approx
-from ..classes.BruteForceIndex import BruteForceIndex
+from ..indexes.BruteForceIndex import BruteForceIndex
 
 def test_bruteforce_index_basic():
     ids   = [uuid4() for _ in range(3)]

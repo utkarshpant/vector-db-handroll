@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from uuid import UUID, uuid4
 
-from app.classes.Document import Document
-from app.classes.Chunk import Chunk, EMBEDDING_DIM
+from app.core.Document import Document
+from app.core.Chunk import Chunk, EMBEDDING_DIM
 
 def create_test_chunk(text="test", dim=EMBEDDING_DIM):
     emb = np.ones((dim,), dtype=np.float32)

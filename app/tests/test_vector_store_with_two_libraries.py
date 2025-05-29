@@ -4,11 +4,12 @@ import pytest
 from uuid import UUID, uuid4
 from typing import Callable
 
-from ..classes.vector_store import VectorStore
-from ..classes.BruteForceIndex import BruteForceIndex
-from ..classes.BallTreeIndex import BallTreeIndex
-from ..classes.Document import Document
-from ..classes.Chunk import Chunk
+from app.services.vector_store import VectorStore
+from app.indexes.BruteForceIndex import BruteForceIndex
+from app.indexes.BallTreeIndex import BallTreeIndex
+from app.core.Document import Document
+from app.core.Chunk import Chunk
+
 
 @pytest.fixture(scope="session")
 def fake_embed():
@@ -22,9 +23,11 @@ def fake_embed():
         return vec / np.linalg.norm(vec)
     return _embed
 
+
 @pytest.fixture
 def vector_store():
     return VectorStore()
+
 
 def _populate_library(store: VectorStore, lib_id: UUID, embed: Callable[[str, int], np.ndarray], doc_prefix):
     """
@@ -38,7 +41,8 @@ def _populate_library(store: VectorStore, lib_id: UUID, embed: Callable[[str, in
             text = f"{doc_prefix}_doc_{d}_chunk_{c}"
             doc.add_chunk(Chunk(text=text, embedding=embed(text)))
         lib.add_document(doc)
-    chunk_map = {chunk.id: chunk.text for doc in lib.get_all_documents() for chunk in doc.get_all_chunks()}
+    chunk_map = {chunk.id: chunk.text for doc in lib.get_all_documents()
+                 for chunk in doc.get_all_chunks()}
     return chunk_map
 
 # parameters for this test: brute force index and ball tree index

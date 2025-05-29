@@ -3,8 +3,8 @@ import numpy as np
 import pytest
 from uuid import uuid4
 
-from ..classes.BallTreeIndex import BallTreeIndex
-from ..classes.Chunk import EMBEDDING_DIM
+from ..indexes.BallTreeIndex import BallTreeIndex
+from ..core.Chunk import EMBEDDING_DIM
 
 
 # ---------------------------------------------------------------- helpers

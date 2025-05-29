@@ -1,4 +1,4 @@
-from classes.vector_store import VectorStore
+from app.services.vector_store import VectorStore
 import numpy as np
 
 vector_store = VectorStore()

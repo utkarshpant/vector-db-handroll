@@ -4,11 +4,11 @@ from uuid import UUID
 
 import numpy as np
 
-from ..classes.Chunk import Chunk
-from ..classes.Document import Document
-from ..classes.Library import Library
-from ..classes.BaseIndex import BaseIndex
-from ..classes.BruteForceIndex import BruteForceIndex
+from ..core.Chunk import Chunk
+from ..core.Document import Document
+from ..core.Library import Library
+from ..indexes.BaseIndex import BaseIndex
+from ..indexes.BruteForceIndex import BruteForceIndex
 
 
 class VectorStore:

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from uuid import UUID
 
-from ..classes.Chunk import Chunk, EMBEDDING_DIM  # adjust the import path as necessary
+from ..core.Chunk import Chunk, EMBEDDING_DIM  # adjust the import path as necessary
 
 
 def _random_embedding(dim: int = EMBEDDING_DIM):

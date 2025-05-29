@@ -2,10 +2,10 @@ import pytest
 import numpy as np
 from uuid import uuid4
 
-from ..classes.Chunk import Chunk, EMBEDDING_DIM
-from ..classes.Document import Document
-from ..classes.Library import Library
-from ..classes.BruteForceIndex import BruteForceIndex
+from ..core.Chunk import Chunk, EMBEDDING_DIM
+from ..core.Document import Document
+from ..core.Library import Library
+from ..indexes.BruteForceIndex import BruteForceIndex
 
 def make_chunk(fill: float = 1.0) -> Chunk:
     """Return a simple 1536-D vector filled with `fill`."""

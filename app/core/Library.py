@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .Document import Document
 from .Chunk import Chunk
-from ..classes.BaseIndex import BaseIndex
+from ..indexes.BaseIndex import BaseIndex
 
 
 class Library(BaseModel):
