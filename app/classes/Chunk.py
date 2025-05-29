@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, List
 from uuid import uuid4, UUID
-from pydantic import BaseModel, ConfigDict, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 import numpy as np
 
 EMBEDDING_DIM = 1536
@@ -27,7 +27,7 @@ class Chunk(BaseModel):
         description="UTC timestamp when the chunk was created",
     )
 
-    @validator('embedding')
+    @field_validator('embedding')
     def _validate_embedding(cls, v: np.ndarray) -> np.ndarray:
         """
         Validate that the embedding is a numpy array of the correct shape.

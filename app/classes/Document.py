@@ -3,7 +3,8 @@ from datetime import datetime, timezone
 from typing import Any, List, Optional
 from uuid import uuid4, UUID
 
-from pydantic import BaseModel, ConfigDict, Field, validator
+import numpy as np
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from .Chunk import Chunk
 
 class Document(BaseModel):
@@ -34,7 +35,7 @@ class Document(BaseModel):
         description="UTC timestamp when the Document was created"
     )
 
-    @validator("chunks", pre=True)
+    @field_validator("chunks", mode="before")
     def _ensure_chunk_list(cls, v):
         """
         Allow initializing from list of dicts or list of Chunk instances.
@@ -60,6 +61,12 @@ class Document(BaseModel):
         self.chunks = [c for c in self.chunks if c.id != chunk_id]
         if len(self.chunks) == original_len:
             raise KeyError(f"No chunk with id={chunk_id} found")
+
+    def get_all_vectors(self) -> List[np.ndarray]:
+        """
+        Get all chunk embeddings as a list of numpy arrays.
+        """
+        return [c.vector for c in self.chunks]
 
     def to_dict(self) -> dict[str, Any]:
         """

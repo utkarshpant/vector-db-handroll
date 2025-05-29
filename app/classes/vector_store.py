@@ -1,104 +1,63 @@
+from __future__ import annotations
+from typing import Dict, List, Tuple
+from uuid import UUID
+
 import numpy as np
-from collections import defaultdict
+
+from ..classes.Chunk import Chunk
+from ..classes.Document import Document
+from ..classes.Library import Library
+from ..classes.BaseIndex import BaseIndex
+from ..classes.BruteForceIndex import BruteForceIndex
 
 
 class VectorStore:
-    def __init__(self, num_partitions=5):
-        self.vector_data = {}
-        self.index = defaultdict(list)
-        self.num_partitions = num_partitions
+    """
+    A simple in-memory vector store that manages multiple `Libraries` and exposes a CRUD API to interact with them.
+    """
 
-    def add_vector(self, key, vector):
+    def __init__(self, index_factory=BruteForceIndex):
+        self._libraries: Dict[UUID, Library] = {}
+        self._index_factory = index_factory
+        # per-library helper: id -> Chunk (populated when index is (re)built)
+        self._chunk_lookup: Dict[UUID, Dict[UUID, Chunk]] = {}
+
+    def create_library(self, name: str, metadata: dict | None = None) -> UUID:
+        lib = Library(name=name, metadata=metadata or {})
+        self._libraries[lib.id] = lib
+        return lib.id
+
+    def get_library(self, lib_id: UUID) -> Library:
+        return self._libraries[lib_id]
+
+    def delete_library(self, lib_id: UUID) -> None:
+        self._libraries.pop(lib_id)
+        self._chunk_lookup.pop(lib_id, None)
+
+    def build_index(self, lib_id: UUID, index_cls: type[BaseIndex] | None = None) -> None:
         """
-        Add a `vector` with a given `key` to the vector store.
-        @param key: Unique identifier for the vector.
-        @param vector: The vector to be stored, should be a numpy array.
+        (Re)build the index for one library and refresh its chunk-lookup table.
         """
+        lib = self._libraries[lib_id]
+        index = (index_cls or self._index_factory)()
+        lib.build_index(index)
 
-        self.vector_data[key] = vector
-        self.update_index(key, vector)
+        # rebuild quick lookup
+        self._chunk_lookup[lib_id] = {
+            chunk.id: chunk
+            for doc in lib.documents
+            for chunk in doc.chunks
+        }
 
-    def get_vector(self, key):
+    def search(
+        self, lib_id: UUID, query_vec: np.ndarray, k: int = 5
+    ) -> List[Tuple[Chunk, float]]:
         """
-        Retrieve a vector by its key.
-        @param key: Unique identifier for the vector.
-        @return: The vector associated with the key, or None if not found.
+        Return [(Chunk, similarity)] sorted by similarity desc.
         """
-        return self.vector_data.get(key, None)
+        hits = self._libraries[lib_id].search(query_vec, k)
+        lookup = self._chunk_lookup.get(lib_id)  # populated by build_index()
+        if lookup is None:
+            raise RuntimeError("Index has not been built for this library")
 
-    def _get_partition_key(self, vector):
-        """
-        Quantize each dimension to get the partition key for the vector.
-        """
-
-        normalized_vector = vector / \
-            np.linalg.norm(vector) if np.linalg.norm(vector) > 0 else vector
-        quantized = np.floor((normalized_vector + 1)/2 *
-                             self.num_partitions).astype(int)
-
-        quantized = np.clip(quantized, 0, self.num_partitions - 1)
-
-        # return tuples of indices for the top-K dimensions
-        k = min(3, len(vector))
-        top_dims = np.argsort(np.abs(vector))[-k:]
-        return tuple((dim, quantized[dim]) for dim in sorted(top_dims))
-
-    def update_index(self, key, vector):
-        """
-        Update the index with the new vector.
-        @param key: Unique identifier for the vector.
-        @param vector: The vector to be indexed, should be a numpy array.
-        """
-
-        # get partition key for the vector
-        partition_key = self._get_partition_key(vector)
-
-        self.index[partition_key].append(key)
-
-        # also add to neighboring partitions for better recall of similar vectors
-        for i in range(len(partition_key)):
-            dim, val = partition_key[i]
-
-            if (val > 0):
-                neighbor_key = list(partition_key)
-                neighbor_key[i] = (dim, val - 1)
-                self.index[tuple(neighbor_key)].append(key)
-
-            if (val < self.num_partitions - 1):
-                neighbor_key = list(partition_key)
-                neighbor_key[i] = (dim, val + 1)
-                self.index[tuple(neighbor_key)].append(key)
-
-    def find_similar_vectors(self, vector, limit=5):
-        """
-        Find the most similar vectors to the given vector.
-        @param vector: The vector to compare against.
-        @param limit: The maximum number of similar vectors to return.
-        @return: A list of tuples (key, similarity) sorted by similarity.
-        """
-        if (len(self.vector_data) == 0):
-            return []
-        
-        # Get the partition key for the input vector
-        partition_key = self._get_partition_key(vector)
-
-        candidate_keys = set()
-        if partition_key in self.index:
-            candidate_keys.update(self.index[partition_key])
-
-        # If still not enough candidates, use all vectors
-        if len(candidate_keys) < limit:
-            candidate_keys = set(self.vector_data.keys())
-
-        similarities = []
-        for key in candidate_keys:
-            candidate_vector = self.vector_data[key]
-            if candidate_vector is not None:
-                similarity = np.dot(vector, candidate_vector) / \
-                    (np.linalg.norm(vector) * np.linalg.norm(candidate_vector))
-                similarities.append((key, similarity))
-        
-        # Sort by similarity and return the top `limit` results
-        similarities.sort(key=lambda x: x[1], reverse=True)
-        return similarities[:limit]
-
+        return [(lookup[cid], score) for cid, score in hits]

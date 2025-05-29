@@ -5,11 +5,12 @@ from datetime import datetime, timezone
 from typing import Any, List, Optional, Tuple
 from uuid import uuid4, UUID
 
-from pydantic import BaseModel, ConfigDict, Field, validator
+import numpy as np
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .Document import Document
 from .Chunk import Chunk
-# from ..index.base import BaseIndex
+from ..classes.BaseIndex import BaseIndex
 
 
 class Library(BaseModel):
@@ -35,26 +36,27 @@ class Library(BaseModel):
         default_factory=list,
         description="Documents contained in this Library"
     )
-    # index: Optional[BaseIndex] = Field(
-    #     default=None,
-    #     description="In-memory vector index for this Library"
-    # )
+    index: Optional[BaseIndex] = Field(
+        default=None,
+        description="In-memory vector index for this Library"
+    )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="UTC timestamp when the library was created"
     )
 
-    @validator("documents", pre=True)
+    @field_validator("documents", mode='before')
     def _ensure_documents_list(cls, v):
         if not isinstance(v, list):
             raise ValueError("`documents` must be a list of Document instances")
         return v
 
-    def add_document(self, doc: Document) -> None:
+    def add_document(self, doc: Document) -> UUID:
         """Add a new Document to this Library."""
         if any(d.id == doc.id for d in self.documents):
             raise ValueError(f"Document with id={doc.id} already exists")
         self.documents.append(doc)
+        return doc.id
 
     def remove_document(self, doc_id: UUID) -> None:
         """Remove a Document and all its Chunks."""
@@ -98,21 +100,21 @@ class Library(BaseModel):
                 continue
         raise KeyError(f"No chunk with id={chunk_id} in any document")
 
-    # def get_all_embeddings(self) -> List[np.ndarray]:
-    #     """Flatten all chunk embeddings in document order."""
-    #     vectors: List[np.ndarray] = []
-    #     for d in self.documents:
-    #         vectors.extend(d.get_all_embeddings())
-    #     return vectors
+    def get_all_embeddings(self) -> List[np.ndarray]:
+        """Flatten all chunk embeddings in document order."""
+        vectors: List[np.ndarray] = []
+        for d in self.documents:
+            vectors.extend(d.get_all_vectors())
+        return vectors
 
-    # def build_index(self, index: BaseIndex) -> None:
-    #     """
-    #     (Re)build the in-memory index for this Library.
-    #     """
-    #     all_vectors = self.get_all_vectors()
-    #     all_ids = [chunk.id for d in self.documents for chunk in d.chunks]
-    #     index.build(all_vectors, all_ids)
-    #     self.index = index
+    def build_index(self, index: BaseIndex) -> None:
+        """
+        (Re)build the in-memory index for this Library.
+        """
+        all_vectors = self.get_all_embeddings()
+        all_ids = [chunk.id for d in self.documents for chunk in d.chunks]
+        index.build(all_vectors, all_ids)
+        self.index = index
 
     def search(
         self,

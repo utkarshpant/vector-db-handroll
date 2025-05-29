@@ -66,7 +66,6 @@ def test_to_dict_serializes_correctly():
     chunk = create_test_chunk(text="hello")
     doc.add_chunk(chunk)
     d = doc.to_dict()
-    print(d)
     assert d["id"] == str(doc.id)
     assert d["title"] == "Doc F"
     assert d["metadata"] == {"author": "alice"}
