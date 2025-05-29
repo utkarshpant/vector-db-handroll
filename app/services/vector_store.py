@@ -34,6 +34,12 @@ class VectorStore:
         self._libraries.pop(lib_id)
         self._chunk_lookup.pop(lib_id, None)
 
+    def get_all_libraries(self) -> Tuple[Library, ...]:
+        """
+        Return a list of all libraries in the vector store.
+        """
+        return tuple(self._libraries.values())
+
     def build_index(self, lib_id: UUID, index_cls: type[BaseIndex] | None = None) -> None:
         """
         (Re)build the index for one library and refresh its chunk-lookup table.

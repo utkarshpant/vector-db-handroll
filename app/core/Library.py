@@ -8,6 +8,9 @@ from uuid import uuid4, UUID
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.indexes.BallTreeIndex import BallTreeIndex
+from app.indexes.BruteForceIndex import BruteForceIndex
+
 from .Document import Document
 from .Chunk import Chunk
 from ..indexes.BaseIndex import BaseIndex
@@ -36,8 +39,8 @@ class Library(BaseModel):
         default_factory=list,
         description="Documents contained in this Library"
     )
-    index: Optional[BaseIndex] = Field(
-        default=None,
+    index: Optional[BaseIndex | BruteForceIndex | BallTreeIndex] = Field(
+        default=BruteForceIndex(),
         description="In-memory vector index for this Library"
     )
     created_at: datetime = Field(
