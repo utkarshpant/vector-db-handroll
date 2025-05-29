@@ -30,7 +30,6 @@ def test_end_to_end_openai():
 
     store = VectorStore()
 
-    # ----------------------- sample docs ----------------------------------
     doc_text_a = textwrap.dedent("""
         The quick brown fox jumps over the lazy dog.
         Lorem ipsum dolor sit amet, consectetur adipiscing elit.
@@ -43,7 +42,6 @@ def test_end_to_end_openai():
         Ball-tree and KD-tree are classical space-partitioning indexes.
     """).strip()
 
-    # ----------------------- Library A (Ball-tree) ------------------------
     lib_a = store.create_library("A")
     lib_a_obj = store.get_library(lib_a)
 
@@ -56,7 +54,6 @@ def test_end_to_end_openai():
     lib_a_obj.add_document(doc_a)
     store.build_index(lib_a, BallTreeIndex)
 
-    # ----------------------- Library B (Brute-force) ----------------------
     lib_b = store.create_library("B")
     lib_b_obj = store.get_library(lib_b)
 

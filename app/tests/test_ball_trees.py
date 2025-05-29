@@ -7,7 +7,6 @@ from ..indexes.BallTreeIndex import BallTreeIndex
 from ..core.Chunk import EMBEDDING_DIM
 
 
-# ---------------------------------------------------------------- helpers
 def _make_dataset(n: int = 200, d: int = EMBEDDING_DIM):
     """
     Generate n random unit-length vectors and parallel UUID list.
@@ -18,7 +17,6 @@ def _make_dataset(n: int = 200, d: int = EMBEDDING_DIM):
     return vecs, ids
 
 
-# ---------------------------------------------------------------- tests
 def test_build_and_simple_query():
     """
     • Build succeeds.

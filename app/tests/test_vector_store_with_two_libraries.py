@@ -1,7 +1,6 @@
-# tests/test_vector_store_two_libs.py
 import numpy as np
 import pytest
-from uuid import UUID, uuid4
+from uuid import UUID
 from typing import Callable
 
 from app.services.vector_store import VectorStore
