@@ -69,12 +69,12 @@ def test_remove_chunk():
     lib.add_chunk(ch1, doc.id)
     lib.add_chunk(ch2, doc.id)
 
-    lib.remove_chunk(ch1.id)
+    lib.delete_chunks(ch1.id)
     assert len(lib.documents[0].chunks) == 1
     assert lib.documents[0].chunks[0].id == ch2.id
 
     with pytest.raises(KeyError):
-        lib.remove_chunk(ch1.id)
+        lib.delete_chunks(ch1.id)
 
 def test_build_index_and_search():
     lib = Library(name="Index search", index=BruteForceIndex(normalize=False))

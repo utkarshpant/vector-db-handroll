@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional
 
 from app.core.Chunk import Chunk
+from app.core.Filter import Condition
 
 class LibraryListItem(BaseModel):
     """
@@ -48,7 +49,7 @@ class MinimalChunk(BaseModel):
     """
     A minimal, serializable version of Chunk that has only text, embedding and metadata information.
     """
-    id: Optional[UUID] = Field(default_factory=uuid4, description="ID for the chunk")
+    id: UUID = Field(default_factory=uuid4, description="ID for the chunk")
     # text: str = Field(..., description="Text corresponding to the Chunk")
     embedding: List[float] = Field(default_factory=lambda: [0.0] * 1536, description="Embedding vector of the Chunk")
     metadata: Dict[str, Any] = Field(default_factory=lambda: {
@@ -62,6 +63,21 @@ class UpsertChunksDto(BaseModel):
     """
     document_id: Optional[UUID] = Field(None, description="ID of the Document to which chunks will be added")
     chunks: list[MinimalChunk] = Field(..., description="List of chunks to be upserted, each chunk is a dict with its properties")
+    filters: Optional[Dict[str, Condition]] = Field(
+        None, description="Optional filters to apply when upserting chunks"
+    )
+    
+    class Config:
+        from_attributes = True
+        arbitrary_types_allowed = True
+
+class DeleteChunksDto(BaseModel):
+    """
+    Data Transfer Object (DTO) for deleting chunks from a library.
+    """
+    filters: Optional[Dict[str, Condition]] = Field(
+        None, description="Optional filters to apply when deleting chunks"
+    )
     
     class Config:
         from_attributes = True

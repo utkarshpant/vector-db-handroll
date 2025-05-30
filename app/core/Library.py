@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from datetime import datetime, timezone
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Union
 from uuid import uuid4, UUID
 
 import numpy as np
@@ -54,6 +54,12 @@ class Library(BaseModel):
             raise ValueError(
                 "`documents` must be a list of Document instances")
         return v
+    
+    def has_document(self, doc_id: UUID) -> bool:
+        """
+        Check if a Document with the given ID exists in this Library.
+        """
+        return any(d.id == doc_id for d in self.documents)
 
     def add_document(self, doc: Document) -> UUID:
         """Add a new Document to this Library."""
@@ -68,6 +74,15 @@ class Library(BaseModel):
         self.documents = [d for d in self.documents if d.id != doc_id]
         if len(self.documents) == original_len:
             raise KeyError(f"No document with id={doc_id} found")
+
+    def get_document(self, doc_id: UUID) -> Document:
+        """
+        Get a Document by its ID.
+        """
+        for doc in self.documents:
+            if doc.id == doc_id:
+                return doc
+        raise KeyError(f"No document with id={doc_id} found")
 
     def get_all_documents(self) -> Tuple[Document, ...]:
         """Return all Documents in this Library."""
@@ -127,7 +142,32 @@ class Library(BaseModel):
                 self.documents[-1].add_chunk(chunks[0])
             self.documents[-1].add_chunks(chunks)
 
-    def remove_chunk(self, chunk_id: UUID) -> None:
+    def delete_chunks(self, chunks: Optional[Union[UUID, List[UUID]]] = None) -> None:
+        """
+        Unified method to delete Chunks by ID, list of IDs, or all Chunks.
+        """
+        if chunks is None:
+            self._delete_all_chunks()
+        elif isinstance(chunks, UUID):
+            self._remove_chunk(chunks)
+        elif isinstance(chunks, list):
+            for chunk_id in chunks:
+                self._remove_chunk(chunk_id)
+        if self.index is not None:
+            # rebuilds the index
+            self.build_index(self.index.__class__())
+        else:
+            self.build_index(BruteForceIndex())
+
+    def get_all_chunks(self) -> List[Chunk]:
+        """Flatten all chunk embeddings in document order."""
+        vectors: List[Chunk] = []
+        for document in self.documents:
+            chunks = document.get_all_chunks()
+            vectors.extend(chunks)
+        return vectors
+
+    def _remove_chunk(self, chunk_id: UUID) -> None:
         """
         Remove the given Chunk from whichever Document it lives in.
         """
@@ -139,15 +179,7 @@ class Library(BaseModel):
                 continue
         raise KeyError(f"No chunk with id={chunk_id} in any document")
 
-    def get_all_chunks(self) -> List[Chunk]:
-        """Flatten all chunk embeddings in document order."""
-        vectors: List[Chunk] = []
-        for document in self.documents:
-            chunks = document.get_all_chunks()
-            vectors.extend(chunks)
-        return vectors
-
-    def delete_all_chunks(self) -> None:
+    def _delete_all_chunks(self) -> None:
         """
         Remove all Chunks from all Documents in this Library.
         """
