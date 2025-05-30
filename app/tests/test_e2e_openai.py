@@ -6,7 +6,6 @@ from uuid import uuid4
 from app.services.vector_store import VectorStore
 from app.indexes.BallTreeIndex import BallTreeIndex
 from app.indexes.BruteForceIndex import BruteForceIndex
-from app.core.Document import Document
 from app.core.Chunk import Chunk
 
 OPENAI_MODEL = "text-embedding-3-small"
@@ -49,10 +48,7 @@ def test_end_to_end_openai():
     paragraphs_a = doc_text_a.split(PARA_SPLIT)
     embeds_a = embed_openai(paragraphs_a)
 
-    doc_a = Document(title="doc-A")
-    for text, emb in zip(paragraphs_a, embeds_a):
-        doc_a.add_chunk(Chunk(embedding=emb, metadata={"text": text}))
-    lib_a_obj.add_document(doc_a)
+    lib_a_obj.upsert_chunks([Chunk(embedding=emb, metadata={"text": text}) for text, emb in zip(paragraphs_a, embeds_a)])
     store.build_index(lib_a, BallTreeIndex)
 
     lib_b = store.create_library("B")
@@ -61,10 +57,7 @@ def test_end_to_end_openai():
     paragraphs_b = doc_text_b.split(PARA_SPLIT)
     embeds_b = embed_openai(paragraphs_b)
 
-    doc_b = Document(title="doc-B")
-    for text, emb in zip(paragraphs_b, embeds_b):
-        doc_b.add_chunk(Chunk(embedding=emb, metadata={"text": text}))
-    lib_b_obj.add_document(doc_b)
+    lib_b_obj.upsert_chunks([Chunk(embedding=emb, metadata={"text": text}) for text, emb in zip(paragraphs_b, embeds_b)])
     store.build_index(lib_b, BruteForceIndex)
 
     query = "Pack how many liquor jugs?"

@@ -6,7 +6,6 @@ import numpy as np
 
 from app.api.dto.Library import Chunk
 from app.core.Chunk import Chunk
-from app.core.Document import Document
 from app.core.Library import Library
 from app.indexes.BaseIndex import BaseIndex
 from app.indexes.BruteForceIndex import BruteForceIndex

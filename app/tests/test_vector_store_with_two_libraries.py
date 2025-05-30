@@ -7,7 +7,6 @@ from typing import Callable, List
 from app.services.vector_store import VectorStore
 from app.indexes.BruteForceIndex import BruteForceIndex
 from app.indexes.BallTreeIndex import BallTreeIndex
-from app.core.Document import Document
 from app.core.Chunk import Chunk
 
 
@@ -35,17 +34,16 @@ def _populate_library(store: VectorStore, lib_id: UUID, embed: Callable[[str, in
     Returns a dict; `{chunk_id: text}`.
     """
     lib = store.get_library(lib_id)
+    chunks = []
     for d in range(3):
-        doc = Document(title=f"{doc_prefix}_doc_{d}")
         for c in range(2):
             text = f"{doc_prefix}_doc_{d}_chunk_{c}"
-            doc.add_chunk(Chunk(embedding=embed(text), metadata={
+            chunks.append(Chunk(embedding=embed(text), metadata={
                 "text": text,
                 "created_at": datetime.now().isoformat()
             }))
-        lib.add_document(doc)
-    chunk_map = {chunk.id: chunk.metadata['text'] for doc in lib.get_all_documents()
-                 for chunk in doc.get_all_chunks()}
+    lib.upsert_chunks(chunks)
+    chunk_map = {chunk.id: chunk.metadata['text'] for chunk in lib.get_all_chunks()}
     return chunk_map
 
 # parameters for this test: brute force index and ball tree index

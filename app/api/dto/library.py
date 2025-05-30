@@ -38,7 +38,6 @@ class LibraryResponse(BaseModel):
     name: str = Field(..., description="Name of the Library")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Metadata associated with the Library")
     created_at: datetime = Field(..., description="UTC timestamp when the library was created")
-    total_documents: int = Field(..., description="Total number of documents in the Library")
     total_chunks: int = Field(..., description="Total number of chunks in the Library")
     
     class Config:
