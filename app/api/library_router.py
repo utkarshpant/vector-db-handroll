@@ -121,3 +121,16 @@ def upsert_chunks(upsertChunksDto: UpsertChunksDto, lib_id: str):
     all_chunks = [chunk.model_dump()
                   for doc in library.documents for chunk in doc.chunks]
     return all_chunks
+
+# TODO: ADD FILTERS TO DELETE BY!
+@router.delete("/{lib_id}/chunks")
+def delete_chunks_by_library(lib_id: str):
+    """
+    Delete all chunks in a library by its ID.
+    """
+    if not vector_store.has_library(UUID(lib_id)):
+        raise HTTPException(status_code=404, detail="Library not found")
+
+    library = vector_store.get_library(UUID(lib_id))
+    library.delete_all_chunks()
+    return {"status": "ok", "message": f"All chunks deleted from Library {lib_id} successfully."}

@@ -147,6 +147,14 @@ class Library(BaseModel):
             vectors.extend(chunks)
         return vectors
 
+    def delete_all_chunks(self) -> None:
+        """
+        Remove all Chunks from all Documents in this Library.
+        """
+        for document in self.documents:
+            document.chunks.clear()
+        self.index = None
+
     def build_index(self, index: BaseIndex) -> None:
         """
         (Re)build the in-memory index for this Library.
