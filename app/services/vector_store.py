@@ -1,14 +1,14 @@
 from __future__ import annotations
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
 import numpy as np
 
-from ..core.Chunk import Chunk
-from ..core.Document import Document
-from ..core.Library import Library
-from ..indexes.BaseIndex import BaseIndex
-from ..indexes.BruteForceIndex import BruteForceIndex
+from app.core.Chunk import Chunk
+from app.core.Document import Document
+from app.core.Library import Library
+from app.indexes.BaseIndex import BaseIndex
+from app.indexes.BruteForceIndex import BruteForceIndex
 
 
 class VectorStore:
@@ -28,17 +28,36 @@ class VectorStore:
         return lib.id
 
     def get_library(self, lib_id: UUID) -> Library:
+        if lib_id not in self._libraries:
+            raise KeyError(f"Library with ID {lib_id} does not exist.")
         return self._libraries[lib_id]
 
+    def upsert_chunks(self, library_id: UUID, document_id: Optional[UUID], chunks: List[Chunk]) -> None:
+        if library_id not in self._libraries:
+            raise KeyError(f"Library with ID {library_id} does not exist.")
+        library = self._libraries[library_id]
+        library.add_chunks(chunks, document_id)
+
+        # Rebuild index and chunk lookup after upsert
+        self.build_index(library_id)
+
     def delete_library(self, lib_id: UUID) -> None:
+        if lib_id not in self._libraries:
+            raise KeyError(f"Library with ID {lib_id} does not exist.")
         self._libraries.pop(lib_id)
         self._chunk_lookup.pop(lib_id, None)
 
     def get_all_libraries(self) -> Tuple[Library, ...]:
         """
-        Return a list of all libraries in the vector store.
+        Return *tuples* of all libraries in the vector store. Tuples are returned to ensure immutability.
         """
         return tuple(self._libraries.values())
+
+    def has_library(self, lib_id: UUID) -> bool:
+        """
+        Check if a library with the given ID exists in the vector store.
+        """
+        return lib_id in self._libraries
 
     def build_index(self, lib_id: UUID, index_cls: type[BaseIndex] | None = None) -> None:
         """

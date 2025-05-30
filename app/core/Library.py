@@ -12,7 +12,7 @@ from app.indexes.BallTreeIndex import BallTreeIndex
 from app.indexes.BruteForceIndex import BruteForceIndex
 
 from .Document import Document
-from .Chunk import Chunk
+from .Chunk import EMBEDDING_DIM, Chunk
 from ..indexes.BaseIndex import BaseIndex
 
 
@@ -51,7 +51,8 @@ class Library(BaseModel):
     @field_validator("documents", mode='before')
     def _ensure_documents_list(cls, v):
         if not isinstance(v, list):
-            raise ValueError("`documents` must be a list of Document instances")
+            raise ValueError(
+                "`documents` must be a list of Document instances")
         return v
 
     def add_document(self, doc: Document) -> UUID:
@@ -72,17 +73,17 @@ class Library(BaseModel):
         """Return all Documents in this Library."""
         return tuple(self.documents)
 
-    def add_chunk(
-        self,
-        chunk: Chunk,
-        document_id: Optional[UUID] = None
-    ) -> None:
+    def add_chunk(self, chunk: Chunk, document_id: Optional[UUID] = None) -> None:
         """
-        Add a Chunk into a specific Document (or into a default 'root' doc).
+        Add a single Chunk into a specific Document (or into a default 'root' doc).
         """
+        if chunk.embedding.shape[0] != EMBEDDING_DIM:
+            raise ValueError(
+                f"Chunk embedding dimension {chunk.embedding.shape[0]} does not match expected dimension {EMBEDDING_DIM}"
+            )
         if document_id:
             # find the document
-            for d in self.documents:
+            for d in self.get_all_documents():
                 if d.id == document_id:
                     d.add_chunk(chunk)
                     break
@@ -94,6 +95,37 @@ class Library(BaseModel):
                 default_doc = Document(title="__default__")
                 self.documents.append(default_doc)
             self.documents[-1].add_chunk(chunk)
+
+    def add_chunks(
+        self,
+        chunks: List[Chunk],
+        document_id: Optional[UUID] = None
+    ) -> None:
+        """
+        Add a Chunk into a specific Document (or into a default 'root' doc).
+        """
+        if chunks[0].embedding.shape[0] != EMBEDDING_DIM:
+            raise ValueError(
+                f"Chunk embedding dimension {chunks[0].embedding.shape[0]} does not match expected dimension {EMBEDDING_DIM}"
+            )
+        if document_id:
+            # find the document
+            for d in self.documents:
+                if d.id == document_id:
+                    if (len(chunks) == 1 and isinstance(chunks[0], Chunk)):
+                        d.add_chunk(chunks[0])
+                    d.add_chunks(chunks=chunks)
+                    break
+            else:
+                raise KeyError(f"No document with id={document_id} found")
+        else:
+            # if no doc specified, create a default one
+            if not self.documents:
+                default_doc = Document(title="__default__")
+                self.documents.append(default_doc)
+            if len(chunks) == 1 and isinstance(chunks[0], Chunk):
+                self.documents[-1].add_chunk(chunks[0])
+            self.documents[-1].add_chunks(chunks)
 
     def remove_chunk(self, chunk_id: UUID) -> None:
         """

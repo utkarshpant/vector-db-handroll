@@ -53,6 +53,13 @@ class Document(BaseModel):
             raise ValueError(f"Chunk with id={chunk.id} already exists in document")
         self.chunks.append(chunk)
 
+    def add_chunks(self, chunks: List[Chunk]) -> None:
+        """
+        Append multiple Chunks to this document.
+        """
+        for chunk in chunks:
+            self.chunks.extend(chunks)
+
     def remove_chunk(self, chunk_id: UUID) -> None:
         """
         Remove the Chunk with the given ID.
