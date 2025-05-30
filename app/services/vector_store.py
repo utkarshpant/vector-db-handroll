@@ -4,6 +4,7 @@ from uuid import UUID
 
 import numpy as np
 
+from app.api.dto.Library import SerializableChunk
 from app.core.Chunk import Chunk
 from app.core.Document import Document
 from app.core.Library import Library
@@ -32,7 +33,7 @@ class VectorStore:
             raise KeyError(f"Library with ID {lib_id} does not exist.")
         return self._libraries[lib_id]
 
-    def upsert_chunks(self, library_id: UUID, document_id: Optional[UUID], chunks: List[Chunk]) -> None:
+    def upsert_chunks(self, library_id: UUID, document_id: Optional[UUID], chunks: List[Chunk] | List[SerializableChunk]) -> None:
         if library_id not in self._libraries:
             raise KeyError(f"Library with ID {library_id} does not exist.")
         library = self._libraries[library_id]

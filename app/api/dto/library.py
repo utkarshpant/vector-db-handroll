@@ -3,7 +3,7 @@ from uuid import uuid4, UUID
 from pydantic import BaseModel, Field
 from typing import Any, Optional
 
-from app.core.Chunk import Chunk
+from app.core.Chunk import Chunk, SerializableChunk
 
 class LibraryListItem(BaseModel):
     """
@@ -50,7 +50,7 @@ class UpsertChunksDto(BaseModel):
     """
     library_id: UUID = Field(..., description="ID of the Library to which chunks will be added")
     document_id: Optional[UUID] = Field(None, description="ID of the Document to which chunks will be added")
-    chunks: list[Chunk] = Field(..., description="List of chunks to be upserted, each chunk is a dict with its properties")
+    chunks: list[SerializableChunk] = Field(..., description="List of chunks to be upserted, each chunk is a dict with its properties")
     
     class Config:
         from_attributes = True

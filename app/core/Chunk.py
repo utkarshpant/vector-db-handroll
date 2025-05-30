@@ -1,11 +1,12 @@
 from __future__ import annotations
 from datetime import datetime, timezone
-from typing import Any, List
+from typing import Any, Dict, List, Optional
 from uuid import uuid4, UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 import numpy as np
 
 EMBEDDING_DIM = 1536
+
 
 class Chunk(BaseModel):
     """
@@ -52,3 +53,29 @@ class Chunk(BaseModel):
     def to_dict(self) -> dict[str, Any]:
         """JSON‑serialisable representation (numpy arrays → list)."""
         return self.model_dump() | {"embedding": self.embedding}
+
+
+class SerializableChunk(Chunk):
+    """
+    A serializable version of Chunk for use in APIs.
+    """
+    id: UUID = Field(default_factory=uuid4,
+                     description="Unique identifier for the Chunk")
+    document_id: Optional[UUID] = Field(
+        None, description="ID of the Document this Chunk belongs to")
+    text: str = Field(..., description="The text content of the Chunk")
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Metadata associated with the Chunk")
+    embedding: Optional[List[float]] = Field(
+        [i for i in range(EMBEDDING_DIM)], description="Vector embeddings as a list of floats")
+
+
+    @field_validator('embeddings')
+    def validate_embeddings(cls, v):
+        # Validate that embeddings are provided as a list of floats if present
+        if v is not None and not all(isinstance(x, (int, float)) for x in v):
+            raise ValueError("Embeddings must be a list of float values")
+        return v
+
+    class Config:
+        from_attributes = True

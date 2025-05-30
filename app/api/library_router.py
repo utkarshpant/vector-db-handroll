@@ -1,12 +1,12 @@
 from uuid import UUID
 from fastapi import APIRouter, HTTPException
-from app.core.Chunk import Chunk
+from app.core.Chunk import Chunk, SerializableChunk
 from app.core.Document import Document
 from app.core.Library import Library
 from app.services.vector_store import VectorStore
 
 # DTOs for different operations on a Library
-from app.api.dto.library import LibraryListItem, LibraryCreate, LibraryResponse, UpsertChunksDto
+from app.api.dto.Library import LibraryListItem, LibraryCreate, LibraryResponse, UpsertChunksDto
 
 vector_store = VectorStore()
 router = APIRouter()
@@ -82,7 +82,7 @@ def library_exists(lib_id: str):
         return {"exists": False}
 
 
-@router.get("/{lib_id}/chunks", response_model=list[Chunk])
+@router.get("/{lib_id}/chunks", response_model=list[SerializableChunk])
 def get_chunks_by_library(lib_id: str):
     """
     Get all chunks in a library by its ID.
@@ -95,11 +95,13 @@ def get_chunks_by_library(lib_id: str):
               for doc in library.documents for chunk in doc.chunks]
     return chunks
 
+
 @router.put("/{lib_id}/chunks", response_model=list[Chunk])
 def upsert_chunks(upsertChunksDto: UpsertChunksDto, lib_id: str):
     """
     Upsert chunks into a library by its ID.
     """
+    # print(upsertChunksDto.chunks)
     if not vector_store.has_library(UUID(lib_id)):
         raise HTTPException(status_code=404, detail="Library not found")
 

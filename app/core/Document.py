@@ -1,6 +1,6 @@
 from __future__ import annotations
 from datetime import datetime, timezone
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Tuple
 from uuid import uuid4, UUID
 
 import numpy as np
