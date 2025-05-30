@@ -6,8 +6,8 @@ from app.core.Document import Document
 from app.core.Chunk import Chunk, EMBEDDING_DIM
 
 def create_test_chunk(text="test", dim=EMBEDDING_DIM):
-    emb = np.ones((dim,), dtype=np.float32)
-    return Chunk(text=text, embedding=emb, metadata={"foo": "bar"})
+    emb = np.ones((dim,), dtype=np.float32).tolist()
+    return Chunk(embedding=emb, metadata={"foo": "bar", "text": text})
 
 def test_document_creation_default():
     doc = Document(title="My Doc")
@@ -71,4 +71,4 @@ def test_to_dict_serializes_correctly():
     assert d["metadata"] == {"author": "alice"}
     assert isinstance(d["created_at"], str)
     assert isinstance(d["chunks"], list)
-    assert d["chunks"][0]["text"] == "hello"
+    assert d["chunks"][0]['metadata']["text"] == "hello"

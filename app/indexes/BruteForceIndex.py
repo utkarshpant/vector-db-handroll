@@ -10,8 +10,8 @@ class BruteForceIndex(BaseIndex):
     """
 
     def __init__(self, normalize: bool = True):
-        self._vectors: List[float] | None = None
-        self._norms: List[float] | None = None
+        self._vectors: np.ndarray | None = None
+        self._norms: np.ndarray | None = None
         self._ids: List[UUID] = []
         self._normalize = normalize
 
@@ -19,8 +19,8 @@ class BruteForceIndex(BaseIndex):
         if len(vectors) != len(ids):
             raise ValueError("Vectors and IDs must have the same length")
         if not vectors:
-            self._vectors = np.empty((0, 0), dtype=np.float32).tolist()
-            self._norms = np.empty((0, 1), dtype=np.float32).tolist()
+            self._vectors = np.empty([0, 0], dtype=np.float32).tolist()
+            self._norms = np.empty([0, 1], dtype=np.float32).tolist()
             self._ids = []
             return
         

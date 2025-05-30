@@ -1,3 +1,4 @@
+from datetime import datetime
 import numpy as np
 import pytest
 from uuid import UUID
@@ -38,9 +39,12 @@ def _populate_library(store: VectorStore, lib_id: UUID, embed: Callable[[str, in
         doc = Document(title=f"{doc_prefix}_doc_{d}")
         for c in range(2):
             text = f"{doc_prefix}_doc_{d}_chunk_{c}"
-            doc.add_chunk(Chunk(text=text, embedding=embed(text)))
+            doc.add_chunk(Chunk(embedding=embed(text), metadata={
+                "text": text,
+                "created_at": datetime.now().isoformat()
+            }))
         lib.add_document(doc)
-    chunk_map = {chunk.id: chunk.text for doc in lib.get_all_documents()
+    chunk_map = {chunk.id: chunk.metadata['text'] for doc in lib.get_all_documents()
                  for chunk in doc.get_all_chunks()}
     return chunk_map
 

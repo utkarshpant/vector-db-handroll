@@ -51,7 +51,7 @@ def test_end_to_end_openai():
 
     doc_a = Document(title="doc-A")
     for text, emb in zip(paragraphs_a, embeds_a):
-        doc_a.add_chunk(Chunk(text=text, embedding=emb))
+        doc_a.add_chunk(Chunk(embedding=emb, metadata={"text": text}))
     lib_a_obj.add_document(doc_a)
     store.build_index(lib_a, BallTreeIndex)
 
@@ -63,7 +63,7 @@ def test_end_to_end_openai():
 
     doc_b = Document(title="doc-B")
     for text, emb in zip(paragraphs_b, embeds_b):
-        doc_b.add_chunk(Chunk(text=text, embedding=emb))
+        doc_b.add_chunk(Chunk(embedding=emb, metadata={"text": text}))
     lib_b_obj.add_document(doc_b)
     store.build_index(lib_b, BruteForceIndex)
 
@@ -75,7 +75,7 @@ def test_end_to_end_openai():
 
     top_chunk_a, sim_a = hits_a[0]
     top_chunk_b, sim_b = hits_b[0]
-    assert "five dozen" in top_chunk_b.text and sim_b > sim_a
+    assert "five dozen" in top_chunk_b.metadata['text'] and sim_b > sim_a
     # isolation: no chunk from B in A’s results
     ids_b = {chunk.id for chunk, _ in hits_b}
     assert all(chunk.id not in ids_b for chunk, _ in hits_a)

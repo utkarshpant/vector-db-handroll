@@ -196,8 +196,8 @@ def test_get_chunks_by_library_success(mock_vector_store, sample_library_id, sam
     assert response.status_code == 200
     chunks = response.json()
     assert len(chunks) == 2
-    assert chunks[0]['text'] == "Chunk 1 content"
-    assert chunks[1]["text"] == "Chunk 2 content"
+    assert chunks[0]['metadata']['text'] == "Chunk 1 content"
+    assert chunks[1]['metadata']["text"] == "Chunk 2 content"
 
 
 def test_get_chunks_by_library_not_found(mock_vector_store, sample_library_id):
@@ -240,7 +240,7 @@ def test_upsert_chunks_success(mock_vector_store, sample_library_id, sample_libr
     assert len(call_args[0][2]) == 1  # chunks list
     # First chunk is a Chunk object
     assert isinstance(call_args[0][2][0], Chunk)
-    assert call_args[0][2][0].text == "New chunk content"
+    assert call_args[0][2][0].metadata['text'] == "test chunk"
 
 
 def test_upsert_chunks_library_not_found(mock_vector_store, sample_library_id):

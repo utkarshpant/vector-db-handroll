@@ -9,8 +9,8 @@ from ..indexes.BruteForceIndex import BruteForceIndex
 
 def make_chunk(fill: float = 1.0) -> Chunk:
     """Return a simple 1536-D vector filled with `fill`."""
-    vec = np.full((EMBEDDING_DIM,), fill, dtype=np.float32)
-    return Chunk(text=f"text {fill}", embedding=vec)
+    vec = np.full((EMBEDDING_DIM,), fill, dtype=np.float32).tolist()
+    return Chunk(embedding=vec, metadata={"text": f"text {fill}"})
 
 def make_document(title="doc") -> Document:
     return Document(title=title)
@@ -81,13 +81,13 @@ def test_build_index_and_search():
     doc = make_document()
     lib.add_document(doc)
 
-    v1 = np.zeros((EMBEDDING_DIM,), dtype=np.float32)
+    v1 = np.zeros((EMBEDDING_DIM,), dtype=np.float32).tolist()
     v1[0] = 1.0
-    v2 = np.zeros((EMBEDDING_DIM,), dtype=np.float32)
+    v2 = np.zeros((EMBEDDING_DIM,), dtype=np.float32).tolist()
     v2[1] = 1.0
 
-    c1 = Chunk(text="x", embedding=v1)
-    c2 = Chunk(text="y", embedding=v2)
+    c1 = Chunk(embedding=v1, metadata={"text": "x"})
+    c2 = Chunk(embedding=v2, metadata={"text": "y"})
     lib.add_chunk(c1, doc.id)
     lib.add_chunk(c2, doc.id)
 
@@ -95,7 +95,7 @@ def test_build_index_and_search():
     lib.build_index(ix)
 
     # query near v1
-    q = np.zeros((EMBEDDING_DIM,), dtype=np.float32)
+    q = np.zeros((EMBEDDING_DIM,), dtype=np.float32).tolist()
     q[0] = 0.9
     q[1] = 0.1
 
