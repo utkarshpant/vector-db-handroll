@@ -43,15 +43,19 @@ def sample_library_with_documents(sample_library_id):
         chunks=[
             Chunk(
                 id=uuid4(),
-                text="Chunk 1 content",
-                metadata={},
-                embedding=np.random.rand(1536)  # Example embedding
+                metadata={
+                    "text": "Chunk 1 content",
+                    "created_at": datetime.now().isoformat()
+                },
+                embedding=np.random.rand(1536).tolist()  # Example embedding
             ),
             Chunk(
                 id=uuid4(),
-                text="Chunk 2 content",
-                metadata={},
-                embedding=np.random.rand(1536)
+                metadata={
+                    "text": "Chunk 2 content",
+                    "created_at": datetime.now().isoformat()
+                },
+                embedding=np.random.rand(1536).tolist()
             )
         ]
     )
@@ -216,8 +220,7 @@ def test_upsert_chunks_success(mock_vector_store, sample_library_id, sample_libr
     new_chunks = [
         {
             "id": str(uuid4()),
-            "text": "New chunk content",
-            "metadata": {"source": "test"},
+            "metadata": {"source": "test", "created_at": datetime.now().isoformat(), "text": "test chunk"},
             "embedding": np.random.rand(1536).tolist()  # Example embedding
         }
     ]
@@ -230,12 +233,13 @@ def test_upsert_chunks_success(mock_vector_store, sample_library_id, sample_libr
     assert len(chunks) == 2  # The original chunks from the sample library
     mock_vector_store.upsert_chunks.assert_called_once()
     call_args = mock_vector_store.upsert_chunks.call_args
-    
+
     # Check the arguments
     assert call_args[0][0] == UUID(sample_library_id)  # lib_id
     assert call_args[0][1] is None  # document_id
     assert len(call_args[0][2]) == 1  # chunks list
-    assert isinstance(call_args[0][2][0], Chunk)  # First chunk is a Chunk object
+    # First chunk is a Chunk object
+    assert isinstance(call_args[0][2][0], Chunk)
     assert call_args[0][2][0].text == "New chunk content"
 
 
@@ -246,9 +250,13 @@ def test_upsert_chunks_library_not_found(mock_vector_store, sample_library_id):
     new_chunks = [
         {
             "id": str(uuid4()),
-            "text": "New chunk content",
-            "metadata": {"source": "test"},
-            "embedding": np.random.rand(1536).tolist()  # Example embedding
+            "metadata": {
+                "source": "test",
+                "created_at": datetime.now().isoformat(),
+                "text": "test chunk"
+            },
+            # Example embedding
+            "embedding": np.random.rand(1536).tolist()
         }
     ]
 

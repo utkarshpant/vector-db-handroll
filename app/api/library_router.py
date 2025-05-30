@@ -103,20 +103,11 @@ def upsert_chunks(upsertChunksDto: UpsertChunksDto, lib_id: str):
     """
     Upsert chunks into a library by its ID.
     """
-    log_file = os.path.join(os.path.dirname(
-        os.path.abspath(__file__)), '..', '..', 'debug_logs.txt')
-    logging.basicConfig(filename=log_file, level=logging.DEBUG,
-                        format='%(asctime)s - %(levelname)s - %(message)s')
-    logger = logging.getLogger("api_debug")
-    logger.debug(f"Received lib_id: {lib_id}")
-    logger.debug(f"DTO JSON: {upsertChunksDto.model_dump_json()}")
-    logger.debug(f"Chunks received: {len(upsertChunksDto.chunks)}")
-    # print(upsertChunksDto.chunks)
     if not vector_store.has_library(UUID(lib_id)):
         raise HTTPException(status_code=404, detail="Library not found")
 
     vector_store.upsert_chunks(UUID(lib_id), None, [Chunk(
-        text=chunk.text, embedding=chunk.embedding, metadata=chunk.metadata) for chunk in upsertChunksDto.chunks])
+        embedding=chunk.embedding, metadata=chunk.metadata) for chunk in upsertChunksDto.chunks])
     library = vector_store.get_library(UUID(lib_id))
     all_chunks = [chunk.model_dump()
                   for doc in library.documents for chunk in doc.chunks]

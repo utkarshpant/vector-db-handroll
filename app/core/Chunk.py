@@ -16,16 +16,19 @@ class Chunk(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     id: UUID = Field(default_factory=uuid4,
                      description="Unique identifier for the Chunk")
-    text: str = Field(..., description="The raw text of the Chunk")
+    # text: str = Field(..., description="The raw text of the Chunk")
     embedding: List[float] = Field(default_factory=lambda: [0 for i in range(EMBEDDING_DIM)], description="The embedding vector of the Chunk")
     metadata: dict[str, Any] = Field(
-        default_factory=dict,
+        default_factory=lambda: {
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "text": "",
+        },
         description="Additional metadata associated with the Chunk"
     )
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        description="UTC timestamp when the chunk was created",
-    )
+    # created_at: datetime = Field(
+    #     default_factory=lambda: datetime.now(timezone.utc),
+    #     description="UTC timestamp when the chunk was created",
+    # )
 
     @field_validator('embedding')
     def _validate_embedding(cls, v: List[float]) -> List[float]:
@@ -38,8 +41,16 @@ class Chunk(BaseModel):
 
     @property
     def vector(self) -> List[float]:
-        """Return the embedding as an immutable `np.ndarray`."""
-        return self.embedding
+        """Return the embedding as an immutable tuple."""
+        return (self.embedding)
+
+    @property
+    def created_at(self) -> str | None:
+        """Return the creation timestamp from metadata."""
+        if "created_at" not in self.metadata:
+            return None
+        return self.metadata.get("created_at")
+
 
     def cosine_similarity(self, other_vector: List[float]) -> float:
         """Cosine similarity between this chunk and `other_vector`."""

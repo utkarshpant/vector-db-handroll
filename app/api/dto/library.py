@@ -49,9 +49,12 @@ class MinimalChunk(BaseModel):
     A minimal, serializable version of Chunk that has only text, embedding and metadata information.
     """
     id: Optional[UUID] = Field(default_factory=uuid4, description="ID for the chunk")
-    text: str = Field(..., description="Text corresponding to the Chunk")
+    # text: str = Field(..., description="Text corresponding to the Chunk")
     embedding: List[float] = Field(default_factory=lambda: [0.0] * 1536, description="Embedding vector of the Chunk")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadata associated with the Chunk")
+    metadata: Dict[str, Any] = Field(default_factory=lambda: {
+        "created_at": datetime.now().isoformat(),
+        "text": ""
+    }, description="Metadata associated with the Chunk")
 
 class UpsertChunksDto(BaseModel):
     """
