@@ -1,4 +1,5 @@
 import os, time, textwrap, pytest, numpy as np
+from typing import List
 from app.utils.openai import client
 from uuid import uuid4
 
@@ -12,14 +13,14 @@ OPENAI_MODEL = "text-embedding-3-small"
 PARA_SPLIT   = "\n"                      # paragraph splitter
 
 
-def embed_openai(texts: list[str]) -> list[np.ndarray]:
+def embed_openai(texts: list[str]) -> list[List[float]]:
     """Batch embed; returns list[np.ndarray]."""
     res = client.embeddings.create(
         model=OPENAI_MODEL,
         input=texts,
         encoding_format="float"
     )
-    return [np.asarray(e.embedding, dtype=np.float32) for e in res.data]
+    return [np.asarray(e.embedding, dtype=np.float32).tolist() for e in res.data]
 
 
 @pytest.mark.integration

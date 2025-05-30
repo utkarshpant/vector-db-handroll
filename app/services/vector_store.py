@@ -4,7 +4,7 @@ from uuid import UUID
 
 import numpy as np
 
-from app.api.dto.Library import SerializableChunk
+from app.api.dto.Library import Chunk
 from app.core.Chunk import Chunk
 from app.core.Document import Document
 from app.core.Library import Library
@@ -33,7 +33,7 @@ class VectorStore:
             raise KeyError(f"Library with ID {lib_id} does not exist.")
         return self._libraries[lib_id]
 
-    def upsert_chunks(self, library_id: UUID, document_id: Optional[UUID], chunks: List[Chunk] | List[SerializableChunk]) -> None:
+    def upsert_chunks(self, library_id: UUID, document_id: Optional[UUID], chunks: List[Chunk]) -> None:
         if library_id not in self._libraries:
             raise KeyError(f"Library with ID {library_id} does not exist.")
         library = self._libraries[library_id]
@@ -76,7 +76,7 @@ class VectorStore:
         }
 
     def search(
-        self, lib_id: UUID, query_vec: np.ndarray, k: int = 5
+        self, lib_id: UUID, query_vec: List[float], k: int = 5
     ) -> List[Tuple[Chunk, float]]:
         """
         Return [(Chunk, similarity)] sorted by similarity desc.

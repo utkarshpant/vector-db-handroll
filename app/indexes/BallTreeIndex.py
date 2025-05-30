@@ -14,8 +14,8 @@ class _Ball:
     - `Leaf` if both `left` and `right` are None, containing <= leaf_size points.
     - `Internal` if it has children, containing more than leaf_size points.
     """
-    idx_list: np.ndarray # indices of the original vectors
-    center: np.ndarray # center of the ball/node
+    idx_list: List[float] # indices of the original vectors
+    center: List[float] # center of the ball/node
     radius: float # radius of the ball (max cosine distance to center from points in idx_list)
     left: _Ball | None = None
     right: _Ball | None = None
@@ -32,11 +32,11 @@ class BallTreeIndex(BaseIndex):
 
     def __init__(self, leaf_size: int = 16) -> None:
         self.leaf_size = leaf_size
-        self._vectors: np.ndarray | None = None        # (n, d) float32 unit-norm
+        self._vectors: List[float] | None = None        # (n, d) float32 unit-norm
         self._ids: list[UUID] = []                  # parallel list of UUIDs
         self._root: _Ball | None = None             # top of the tree
 
-    def build(self, vectors: List[np.ndarray], ids: List[UUID]) -> None:
+    def build(self, vectors: List[List[float]], ids: List[UUID]) -> None:
         """
         Build the ball tree in O(n log n).
 
@@ -56,11 +56,11 @@ class BallTreeIndex(BaseIndex):
             self._vectors, self._ids, self._root = None, [], None
             return
 
-        mat = np.stack([v.astype(np.float32, copy=False) for v in vectors])
+        mat = np.stack([np.array(v).astype(np.float32, copy=False) for v in vectors])
         mat /= np.linalg.norm(mat, axis=1, keepdims=True)
         self._vectors, self._ids = mat, list(ids)
 
-        def build_rec(idxs: np.ndarray) -> _Ball:
+        def build_rec(idxs: List[float]) -> _Ball:
             """
             Recursively build a ball tree node from the given indices.
             """
@@ -73,7 +73,7 @@ class BallTreeIndex(BaseIndex):
             node = _Ball(idx_list=idxs, center=center, radius=radius)
 
             # split if too many points
-            if idxs.size > self.leaf_size:
+            if len(idxs) > self.leaf_size:
                 proj = points @ center
                 median = np.median(proj)
                 left_mask = proj <= median
@@ -83,7 +83,7 @@ class BallTreeIndex(BaseIndex):
 
         self._root = build_rec(np.arange(mat.shape[0]))
 
-    def search(self, query: np.ndarray, k: int) -> List[Tuple[UUID, float]]:
+    def search(self, query: List[float], k: int) -> List[Tuple[UUID, float]]:
         """
         Return top-k nearest neighbors: (UUID, cosine_similarity).
         # TODO: consider returning chunk, similarity tuples instead?
@@ -98,7 +98,7 @@ class BallTreeIndex(BaseIndex):
             return []
 
         # normalise query (cosine)
-        q = query.astype(np.float32, copy=False)
+        q = np.array(query, dtype=np.float32)
         q /= (np.linalg.norm(q) or 1.0)
 
         # top-k

@@ -16,7 +16,7 @@ class BaseIndex(ABC):
     """
 
     @abstractmethod
-    def build(self, vectors: List[np.ndarray], ids: List[UUID]) -> None:
+    def build(self, vectors: List[List[float]], ids: List[UUID]) -> None:
         """
         Build or rebuild the index from scratch.
 
@@ -26,7 +26,7 @@ class BaseIndex(ABC):
         ...
 
     @abstractmethod
-    def search(self, query: np.ndarray, k: int) -> List[Tuple[UUID, float]]:
+    def search(self, query: List[float], k: int) -> List[Tuple[UUID, float]]:
         """
         Query the index to find the k most similar vectors.
 

@@ -77,9 +77,9 @@ class Library(BaseModel):
         """
         Add a single Chunk into a specific Document (or into a default 'root' doc).
         """
-        if chunk.embedding.shape[0] != EMBEDDING_DIM:
+        if len(chunk.embedding) != EMBEDDING_DIM:
             raise ValueError(
-                f"Chunk embedding dimension {chunk.embedding.shape[0]} does not match expected dimension {EMBEDDING_DIM}"
+                f"Chunk embedding dimension {len(chunk.embedding)} does not match expected dimension {EMBEDDING_DIM}"
             )
         if document_id:
             # find the document
@@ -104,9 +104,9 @@ class Library(BaseModel):
         """
         Add a Chunk into a specific Document (or into a default 'root' doc).
         """
-        if chunks[0].embedding.shape[0] != EMBEDDING_DIM:
+        if len(chunks[0].embedding) != EMBEDDING_DIM:
             raise ValueError(
-                f"Chunk embedding dimension {chunks[0].embedding.shape[0]} does not match expected dimension {EMBEDDING_DIM}"
+                f"Chunk embedding dimension {len(chunks[0].embedding)} does not match expected dimension {EMBEDDING_DIM}"
             )
         if document_id:
             # find the document
@@ -158,7 +158,7 @@ class Library(BaseModel):
 
     def search(
         self,
-        query_vector: np.ndarray,
+        query_vector: List[float],
         k: int
     ) -> List[Tuple[UUID, float]]:
         """

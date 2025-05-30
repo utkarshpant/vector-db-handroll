@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from uuid import UUID
-from typing import Callable
+from typing import Callable, List
 
 from app.services.vector_store import VectorStore
 from app.indexes.BruteForceIndex import BruteForceIndex
@@ -15,10 +15,10 @@ def fake_embed():
     """
     Deterministic embedding generator. Hashes text into a PRNG seed.
     """
-    def _embed(text: str, dim: int = 1536) -> np.ndarray:
+    def _embed(text: str, dim: int = 1536) -> List[float]:
         rng = np.random.default_rng(abs(hash(text)) % (2**32))
         # small noise to avoid identical norms
-        vec = rng.standard_normal(dim).astype(np.float32)
+        vec = rng.standard_normal(dim).astype(np.float32).tolist()
         return vec / np.linalg.norm(vec)
     return _embed
 
@@ -28,7 +28,7 @@ def vector_store():
     return VectorStore()
 
 
-def _populate_library(store: VectorStore, lib_id: UUID, embed: Callable[[str, int], np.ndarray], doc_prefix):
+def _populate_library(store: VectorStore, lib_id: UUID, embed: Callable[[str, int], List[float]], doc_prefix):
     """
     3 docs with 2 chunks each = 6 chunks in total
     Returns a dict; `{chunk_id: text}`.

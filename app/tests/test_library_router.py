@@ -228,9 +228,15 @@ def test_upsert_chunks_success(mock_vector_store, sample_library_id, sample_libr
     assert response.status_code == 200
     chunks = response.json()
     assert len(chunks) == 2  # The original chunks from the sample library
-    mock_vector_store.upsert_chunks.assert_called_once_with(
-        UUID(sample_library_id), None, new_chunks
-    )
+    mock_vector_store.upsert_chunks.assert_called_once()
+    call_args = mock_vector_store.upsert_chunks.call_args
+    
+    # Check the arguments
+    assert call_args[0][0] == UUID(sample_library_id)  # lib_id
+    assert call_args[0][1] is None  # document_id
+    assert len(call_args[0][2]) == 1  # chunks list
+    assert isinstance(call_args[0][2][0], Chunk)  # First chunk is a Chunk object
+    assert call_args[0][2][0].text == "New chunk content"
 
 
 def test_upsert_chunks_library_not_found(mock_vector_store, sample_library_id):

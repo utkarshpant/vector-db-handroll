@@ -1,9 +1,11 @@
 from uuid import UUID
 from fastapi import APIRouter, HTTPException
-from app.core.Chunk import Chunk, SerializableChunk
+from app.core.Chunk import Chunk
 from app.core.Document import Document
 from app.core.Library import Library
 from app.services.vector_store import VectorStore
+import os
+import logging
 
 # DTOs for different operations on a Library
 from app.api.dto.Library import LibraryListItem, LibraryCreate, LibraryResponse, UpsertChunksDto
@@ -82,7 +84,7 @@ def library_exists(lib_id: str):
         return {"exists": False}
 
 
-@router.get("/{lib_id}/chunks", response_model=list[SerializableChunk])
+@router.get("/{lib_id}/chunks", response_model=list[Chunk])
 def get_chunks_by_library(lib_id: str):
     """
     Get all chunks in a library by its ID.
@@ -101,11 +103,20 @@ def upsert_chunks(upsertChunksDto: UpsertChunksDto, lib_id: str):
     """
     Upsert chunks into a library by its ID.
     """
+    log_file = os.path.join(os.path.dirname(
+        os.path.abspath(__file__)), '..', '..', 'debug_logs.txt')
+    logging.basicConfig(filename=log_file, level=logging.DEBUG,
+                        format='%(asctime)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger("api_debug")
+    logger.debug(f"Received lib_id: {lib_id}")
+    logger.debug(f"DTO JSON: {upsertChunksDto.model_dump_json()}")
+    logger.debug(f"Chunks received: {len(upsertChunksDto.chunks)}")
     # print(upsertChunksDto.chunks)
     if not vector_store.has_library(UUID(lib_id)):
         raise HTTPException(status_code=404, detail="Library not found")
 
-    vector_store.upsert_chunks(UUID(lib_id), None, upsertChunksDto.chunks)
+    vector_store.upsert_chunks(UUID(lib_id), None, [Chunk(
+        text=chunk.text, embedding=chunk.embedding, metadata=chunk.metadata) for chunk in upsertChunksDto.chunks])
     library = vector_store.get_library(UUID(lib_id))
     all_chunks = [chunk.model_dump()
                   for doc in library.documents for chunk in doc.chunks]

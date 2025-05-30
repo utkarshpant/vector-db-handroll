@@ -17,8 +17,7 @@ class Chunk(BaseModel):
     id: UUID = Field(default_factory=uuid4,
                      description="Unique identifier for the Chunk")
     text: str = Field(..., description="The raw text of the Chunk")
-    embedding: np.ndarray = Field(default_factory=lambda: np.zeros(
-        (EMBEDDING_DIM,), dtype=np.float32), description="The embedding vector of the Chunk")
+    embedding: List[float] = Field(default_factory=lambda: [0 for i in range(EMBEDDING_DIM)], description="The embedding vector of the Chunk")
     metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Additional metadata associated with the Chunk"
@@ -29,53 +28,25 @@ class Chunk(BaseModel):
     )
 
     @field_validator('embedding')
-    def _validate_embedding(cls, v: np.ndarray) -> np.ndarray:
+    def _validate_embedding(cls, v: List[float]) -> List[float]:
         """
         Validate that the embedding is a numpy array of the correct shape.
         """
-        if not isinstance(v, np.ndarray):
-            raise ValueError("Embedding must be a numpy array")
-        if v.shape != (EMBEDDING_DIM,):
+        if len(v) != EMBEDDING_DIM:
             raise ValueError(f"Embedding must have shape ({EMBEDDING_DIM},)")
         return v
 
     @property
-    def vector(self) -> np.ndarray:
+    def vector(self) -> List[float]:
         """Return the embedding as an immutable `np.ndarray`."""
-        return np.asarray(self.embedding, dtype=np.float32)
+        return self.embedding
 
-    def cosine_similarity(self, other_vector: np.ndarray) -> float:
+    def cosine_similarity(self, other_vector: List[float]) -> float:
         """Cosine similarity between this chunk and `other_vector`."""
-        a = self.embedding.astype(np.float32, copy=False)
-        b = other_vector.astype(np.float32, copy=False)
-        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+        a = self.embedding
+        b = other_vector
+        return float(np.dot(self.embedding, other_vector) / (np.linalg.norm(self.embedding) * np.linalg.norm(other_vector)))
 
     def to_dict(self) -> dict[str, Any]:
         """JSON‑serialisable representation (numpy arrays → list)."""
         return self.model_dump() | {"embedding": self.embedding}
-
-
-class SerializableChunk(Chunk):
-    """
-    A serializable version of Chunk for use in APIs.
-    """
-    id: UUID = Field(default_factory=uuid4,
-                     description="Unique identifier for the Chunk")
-    document_id: Optional[UUID] = Field(
-        None, description="ID of the Document this Chunk belongs to")
-    text: str = Field(..., description="The text content of the Chunk")
-    metadata: Dict[str, Any] = Field(
-        default_factory=dict, description="Metadata associated with the Chunk")
-    embedding: Optional[List[float]] = Field(
-        [i for i in range(EMBEDDING_DIM)], description="Vector embeddings as a list of floats")
-
-
-    @field_validator('embeddings')
-    def validate_embeddings(cls, v):
-        # Validate that embeddings are provided as a list of floats if present
-        if v is not None and not all(isinstance(x, (int, float)) for x in v):
-            raise ValueError("Embeddings must be a list of float values")
-        return v
-
-    class Config:
-        from_attributes = True

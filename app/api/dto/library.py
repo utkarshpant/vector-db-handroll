@@ -1,9 +1,9 @@
 from datetime import datetime
 from uuid import uuid4, UUID
 from pydantic import BaseModel, Field
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
-from app.core.Chunk import Chunk, SerializableChunk
+from app.core.Chunk import Chunk
 
 class LibraryListItem(BaseModel):
     """
@@ -44,13 +44,21 @@ class LibraryResponse(BaseModel):
         from_attributes = True
         arbitrary_types_allowed = True
 
+class MinimalChunk(BaseModel):
+    """
+    A minimal, serializable version of Chunk that has only text, embedding and metadata information.
+    """
+    id: Optional[UUID] = Field(default_factory=uuid4, description="ID for the chunk")
+    text: str = Field(..., description="Text corresponding to the Chunk")
+    embedding: List[float] = Field(default_factory=lambda: [0.0] * 1536, description="Embedding vector of the Chunk")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Metadata associated with the Chunk")
+
 class UpsertChunksDto(BaseModel):
     """
     Data Transfer Object (DTO) for upserting chunks into a library.
     """
-    library_id: UUID = Field(..., description="ID of the Library to which chunks will be added")
     document_id: Optional[UUID] = Field(None, description="ID of the Document to which chunks will be added")
-    chunks: list[SerializableChunk] = Field(..., description="List of chunks to be upserted, each chunk is a dict with its properties")
+    chunks: list[MinimalChunk] = Field(..., description="List of chunks to be upserted, each chunk is a dict with its properties")
     
     class Config:
         from_attributes = True
