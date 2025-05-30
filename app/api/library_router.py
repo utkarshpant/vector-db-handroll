@@ -116,7 +116,7 @@ def upsert_chunks(upsertChunksDto: UpsertChunksDto, lib_id: str):
     return [chunk.model_dump() for chunk in hydrated_chunks]
 
 
-@router.post("/{lib_id}/chunks")
+@router.post("/{lib_id}/chunks/delete")
 def delete_chunks_by_library(deleteChunksDto: DeleteChunksDto, lib_id: str):
     """
     Delete all chunks in a library by its ID, optionally delete only those that match a filter.
@@ -126,11 +126,18 @@ def delete_chunks_by_library(deleteChunksDto: DeleteChunksDto, lib_id: str):
 
     library = vector_store.get_library(UUID(lib_id))
 
+    # If no filters, delete all chunks
     if not deleteChunksDto.filters:
         library.delete_chunks()
-    else:
-        filters = Filter(root=deleteChunksDto.filters)
-        chunk_ids_to_delete = [chunk.id for chunk in library.get_all_chunks(
-        ) if passes_filter(chunk.metadata, filters)]
-        for id in chunk_ids_to_delete:
-            library.delete_chunks([id])
+        return {"deleted": "all"}
+
+    # Otherwise, delete only chunks matching the filter
+    filters = Filter(root=deleteChunksDto.filters)
+    filtered_chunks = [
+        chunk for chunk in library.get_all_chunks()
+        if passes_filter(chunk.metadata, filters)
+    ]
+    chunk_ids_to_delete = [chunk.id for chunk in filtered_chunks]
+    if chunk_ids_to_delete:
+        library.delete_chunks(chunk_ids_to_delete)
+    return {"deleted": len(chunk_ids_to_delete)}

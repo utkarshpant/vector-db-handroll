@@ -599,7 +599,7 @@ def test_delete_chunks_with_numeric_filters(mock_vector_store, sample_library_id
     # Should call delete_chunks twice for chunks with priority >= 5
     assert mock_library.delete_chunks.call_count == 2
     # Verify the correct chunk IDs were passed
-    call_args_list = [call[0][0] for call in mock_library.delete_chunks.call_args_list]
+    call_args_list = [call[0][0][0] for call in mock_library.delete_chunks.call_args_list]
     assert chunk_id_1 in call_args_list  # priority 8
     assert chunk_id_3 in call_args_list  # priority 5
     assert chunk_id_2 not in call_args_list  # priority 3
