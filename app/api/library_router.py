@@ -103,10 +103,17 @@ def upsert_chunks(upsertChunksDto: UpsertChunksDto, lib_id: str):
         raise HTTPException(status_code=404, detail="Library not found")
 
     hydrated_chunks = [
-        Chunk(id=chunk.id, embedding=chunk.embedding, metadata=chunk.metadata) for chunk in upsertChunksDto.chunks
+        Chunk.model_validate(obj=chunk) for chunk in upsertChunksDto.chunks
     ]
+    # if filters are present, only update those Chunks that match the filter criteria
+    if (upsertChunksDto.filters):
+        filters = Filter(root=upsertChunksDto.filters)
+        print(filters)
+        hydrated_chunks = [
+            chunk for chunk in hydrated_chunks if passes_filter(chunk.metadata, filters)
+        ]
     vector_store.upsert_chunks(UUID(lib_id), hydrated_chunks)
-    return [chunk.model_dump() for chunk in vector_store.get_all_chunks(lib_id=UUID(lib_id))]
+    return [chunk.model_dump() for chunk in hydrated_chunks]
 
 
 @router.post("/{lib_id}/chunks")
@@ -126,4 +133,4 @@ def delete_chunks_by_library(deleteChunksDto: DeleteChunksDto, lib_id: str):
         chunk_ids_to_delete = [chunk.id for chunk in library.get_all_chunks(
         ) if passes_filter(chunk.metadata, filters)]
         for id in chunk_ids_to_delete:
-            library.delete_chunks(id)
+            library.delete_chunks([id])

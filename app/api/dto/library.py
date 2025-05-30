@@ -44,23 +44,23 @@ class LibraryResponse(BaseModel):
         from_attributes = True
         arbitrary_types_allowed = True
 
-class MinimalChunk(BaseModel):
-    """
-    A minimal, serializable version of Chunk that has only text, embedding and metadata information.
-    """
-    id: UUID = Field(default_factory=uuid4, description="ID for the chunk")
-    # text: str = Field(..., description="Text corresponding to the Chunk")
-    embedding: List[float] = Field(default_factory=lambda: [0.0] * 1536, description="Embedding vector of the Chunk")
-    metadata: Dict[str, Any] = Field(default_factory=lambda: {
-        "created_at": datetime.now().isoformat(),
-        "text": ""
-    }, description="Metadata associated with the Chunk")
+# class MinimalChunk(BaseModel):
+#     """
+#     A minimal, serializable version of Chunk that has only text, embedding and metadata information.
+#     """
+#     id: UUID = Field(default_factory=uuid4, description="ID for the chunk")
+#     # text: str = Field(..., description="Text corresponding to the Chunk")
+#     embedding: List[float] = Field(default_factory=lambda: [0.0] * 1536, description="Embedding vector of the Chunk")
+#     metadata: Dict[str, Any] = Field(default_factory=lambda: {
+#         "created_at": datetime.now().isoformat(),
+#         "text": ""
+#     }, description="Metadata associated with the Chunk")
 
 class UpsertChunksDto(BaseModel):
     """
     Data Transfer Object (DTO) for upserting chunks into a library.
     """
-    chunks: list[MinimalChunk] = Field(..., description="List of chunks to be upserted, each chunk is a dict with its properties")
+    chunks: list[Chunk] = Field(..., description="List of chunks to be upserted, each chunk is a dict with its properties")
     filters: Optional[Dict[str, Condition]] = Field(
         None, description="Optional filters to apply when upserting chunks"
     )

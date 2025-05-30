@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import uuid4, UUID
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 import numpy as np
 
 EMBEDDING_DIM = 1536
@@ -19,10 +19,7 @@ class Chunk(BaseModel):
     # text: str = Field(..., description="The raw text of the Chunk")
     embedding: List[float] = Field(default_factory=lambda: [0 for i in range(EMBEDDING_DIM)], description="The embedding vector of the Chunk")
     metadata: dict[str, Any] = Field(
-        default_factory=lambda: {
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "text": "",
-        },
+        default_factory=dict,
         description="Additional metadata associated with the Chunk"
     )
     # created_at: datetime = Field(
@@ -37,6 +34,15 @@ class Chunk(BaseModel):
         """
         if len(v) != EMBEDDING_DIM:
             raise ValueError(f"Embedding must have shape ({EMBEDDING_DIM},)")
+        return v
+
+    @field_validator('metadata')
+    def _validate_metadata(cls, v: dict[str, Any]) -> dict[str, Any]:
+        """
+        Ensure metadata is a dictionary.
+        """
+        if "created_at" not in v:
+            v["created_at"] = datetime.now(timezone.utc).isoformat()
         return v
 
     @property
