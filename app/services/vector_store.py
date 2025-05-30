@@ -6,7 +6,6 @@ import numpy as np
 
 from app.api.dto.Library import Chunk
 from app.core.Chunk import Chunk
-from app.core.Document import Document
 from app.core.Library import Library
 from app.indexes.BaseIndex import BaseIndex
 from app.indexes.BruteForceIndex import BruteForceIndex
@@ -33,14 +32,22 @@ class VectorStore:
             raise KeyError(f"Library with ID {lib_id} does not exist.")
         return self._libraries[lib_id]
 
-    def upsert_chunks(self, library_id: UUID, document_id: Optional[UUID], chunks: List[Chunk]) -> None:
+    def upsert_chunks(self, library_id: UUID, chunks: List[Chunk]) -> None:
         if library_id not in self._libraries:
             raise KeyError(f"Library with ID {library_id} does not exist.")
         library = self._libraries[library_id]
-        library.add_chunks(chunks, document_id)
+        library.upsert_chunks(chunks)
 
         # Rebuild index and chunk lookup after upsert
         self.build_index(library_id)
+
+    def get_all_chunks(self, lib_id: UUID) -> List[Chunk]:
+        """
+        Return all chunks in the library as a list.
+        """
+        if lib_id not in self._libraries:
+            raise KeyError(f"Library with ID {lib_id} does not exist.")
+        return self._libraries[lib_id].chunks
 
     def delete_library(self, lib_id: UUID) -> None:
         if lib_id not in self._libraries:
@@ -71,8 +78,7 @@ class VectorStore:
         # rebuild quick lookup
         self._chunk_lookup[lib_id] = {
             chunk.id: chunk
-            for doc in lib.documents
-            for chunk in doc.chunks
+            for chunk in lib.chunks
         }
 
     def search(

@@ -1,14 +1,13 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 from fastapi import APIRouter, HTTPException
+from app.core.Filter import Filter
 from app.core.Chunk import Chunk
-from app.core.Document import Document
 from app.core.Library import Library
 from app.services.vector_store import VectorStore
-import os
-import logging
 
 # DTOs for different operations on a Library
-from app.api.dto.Library import LibraryListItem, LibraryCreate, LibraryResponse, UpsertChunksDto
+from app.api.dto.Library import DeleteChunksDto, LibraryListItem, LibraryCreate, LibraryResponse, UpsertChunksDto
+from app.utils.filters import passes_filter
 
 vector_store = VectorStore()
 router = APIRouter()
@@ -36,8 +35,7 @@ def get_library_by_id(lib_id: str):
         name=library.name,
         metadata=library.metadata,
         created_at=library.created_at,
-        total_documents=len(library.documents),
-        total_chunks=sum(len(doc.chunks) for doc in library.documents)
+        total_chunks=len(library.chunks)
     )
     return LibraryResponse.model_validate(library)
 
@@ -55,8 +53,7 @@ def createLibrary(libraryData: LibraryCreate):
         name=library.name,
         metadata=library.metadata,
         created_at=library.created_at,
-        total_documents=len(library.documents),
-        total_chunks=sum(len(doc.chunks) for doc in library.documents)
+        total_chunks=len(library.chunks)
     )
     return LibraryResponse.model_validate(library)
 
@@ -93,8 +90,7 @@ def get_chunks_by_library(lib_id: str):
         raise HTTPException(status_code=404, detail="Library not found")
 
     library = vector_store.get_library(UUID(lib_id))
-    chunks = [chunk.model_dump()
-              for doc in library.documents for chunk in doc.chunks]
+    chunks = [chunk.model_dump() for chunk in library.get_all_chunks()]
     return chunks
 
 
@@ -106,22 +102,42 @@ def upsert_chunks(upsertChunksDto: UpsertChunksDto, lib_id: str):
     if not vector_store.has_library(UUID(lib_id)):
         raise HTTPException(status_code=404, detail="Library not found")
 
-    vector_store.upsert_chunks(UUID(lib_id), None, [Chunk(
-        embedding=chunk.embedding, metadata=chunk.metadata) for chunk in upsertChunksDto.chunks])
-    library = vector_store.get_library(UUID(lib_id))
-    all_chunks = [chunk.model_dump()
-                  for doc in library.documents for chunk in doc.chunks]
-    return all_chunks
+    hydrated_chunks = [
+        Chunk.model_validate(obj=chunk) for chunk in upsertChunksDto.chunks
+    ]
+    # if filters are present, only update those Chunks that match the filter criteria
+    if (upsertChunksDto.filters):
+        filters = Filter(root=upsertChunksDto.filters)
+        print(filters)
+        hydrated_chunks = [
+            chunk for chunk in hydrated_chunks if passes_filter(chunk.metadata, filters)
+        ]
+    vector_store.upsert_chunks(UUID(lib_id), hydrated_chunks)
+    return [chunk.model_dump() for chunk in hydrated_chunks]
 
-# TODO: ADD FILTERS TO DELETE BY!
-@router.delete("/{lib_id}/chunks")
-def delete_chunks_by_library(lib_id: str):
+
+@router.post("/{lib_id}/chunks/delete")
+def delete_chunks_by_library(deleteChunksDto: DeleteChunksDto, lib_id: str):
     """
-    Delete all chunks in a library by its ID.
+    Delete all chunks in a library by its ID, optionally delete only those that match a filter.
     """
     if not vector_store.has_library(UUID(lib_id)):
         raise HTTPException(status_code=404, detail="Library not found")
 
     library = vector_store.get_library(UUID(lib_id))
-    library.delete_all_chunks()
-    return {"status": "ok", "message": f"All chunks deleted from Library {lib_id} successfully."}
+
+    # If no filters, delete all chunks
+    if not deleteChunksDto.filters:
+        library.delete_chunks()
+        return {"deleted": "all"}
+
+    # Otherwise, delete only chunks matching the filter
+    filters = Filter(root=deleteChunksDto.filters)
+    filtered_chunks = [
+        chunk for chunk in library.get_all_chunks()
+        if passes_filter(chunk.metadata, filters)
+    ]
+    chunk_ids_to_delete = [chunk.id for chunk in filtered_chunks]
+    if chunk_ids_to_delete:
+        library.delete_chunks(chunk_ids_to_delete)
+    return {"deleted": len(chunk_ids_to_delete)}

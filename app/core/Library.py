@@ -11,14 +11,13 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.indexes.BallTreeIndex import BallTreeIndex
 from app.indexes.BruteForceIndex import BruteForceIndex
 
-from .Document import Document
 from .Chunk import EMBEDDING_DIM, Chunk
 from ..indexes.BaseIndex import BaseIndex
 
 
 class Library(BaseModel):
     """
-    Aggregate root: owns Documents and a vector-index instance.
+    Aggregate root: owns Chunks a vector-index instance.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -35,9 +34,9 @@ class Library(BaseModel):
         default_factory=dict,
         description="Arbitrary metadata for the Library"
     )
-    documents: List[Document] = Field(
+    chunks: List[Chunk] = Field(
         default_factory=list,
-        description="Documents contained in this Library"
+        description="Ordered list of Chunks belonging to this Library"
     )
     index: Optional[BaseIndex | BruteForceIndex | BallTreeIndex] = Field(
         default=BruteForceIndex(),
@@ -48,152 +47,74 @@ class Library(BaseModel):
         description="UTC timestamp when the library was created"
     )
 
-    @field_validator("documents", mode='before')
-    def _ensure_documents_list(cls, v):
-        if not isinstance(v, list):
-            raise ValueError(
-                "`documents` must be a list of Document instances")
-        return v
-    
-    def has_document(self, doc_id: UUID) -> bool:
+    def upsert_chunks(self, chunks_to_upsert: List[Chunk]) -> None:
         """
-        Check if a Document with the given ID exists in this Library.
+        Upsert (insert or update) Chunks in the Library's chunk list.
+        If a chunk with the same ID exists, it is replaced; otherwise, it is appended.
         """
-        return any(d.id == doc_id for d in self.documents)
-
-    def add_document(self, doc: Document) -> UUID:
-        """Add a new Document to this Library."""
-        if any(d.id == doc.id for d in self.documents):
-            raise ValueError(f"Document with id={doc.id} already exists")
-        self.documents.append(doc)
-        return doc.id
-
-    def remove_document(self, doc_id: UUID) -> None:
-        """Remove a Document and all its Chunks."""
-        original_len = len(self.documents)
-        self.documents = [d for d in self.documents if d.id != doc_id]
-        if len(self.documents) == original_len:
-            raise KeyError(f"No document with id={doc_id} found")
-
-    def get_document(self, doc_id: UUID) -> Document:
-        """
-        Get a Document by its ID.
-        """
-        for doc in self.documents:
-            if doc.id == doc_id:
-                return doc
-        raise KeyError(f"No document with id={doc_id} found")
-
-    def get_all_documents(self) -> Tuple[Document, ...]:
-        """Return all Documents in this Library."""
-        return tuple(self.documents)
-
-    def add_chunk(self, chunk: Chunk, document_id: Optional[UUID] = None) -> None:
-        """
-        Add a single Chunk into a specific Document (or into a default 'root' doc).
-        """
-        if len(chunk.embedding) != EMBEDDING_DIM:
-            raise ValueError(
-                f"Chunk embedding dimension {len(chunk.embedding)} does not match expected dimension {EMBEDDING_DIM}"
-            )
-        if document_id:
-            # find the document
-            for d in self.get_all_documents():
-                if d.id == document_id:
-                    d.add_chunk(chunk)
-                    break
+        if not chunks_to_upsert:
+            return
+        if not all(len(chunk.embedding) == EMBEDDING_DIM for chunk in chunks_to_upsert):
+            raise ValueError(f"All chunks must have {EMBEDDING_DIM} dimensions")
+        
+        # Build a mapping from chunk ID to index for efficient lookup
+        id_to_index = {chunk.id: idx for idx, chunk in enumerate(self.chunks)}
+        for chunk in chunks_to_upsert:
+            if chunk.id in id_to_index:
+                self.chunks[id_to_index[chunk.id]] = chunk
             else:
-                raise KeyError(f"No document with id={document_id} found")
+                self.chunks.append(chunk)
+        
+        # Rebuild index
+        if self.index is not None:
+            self.build_index(self.index.__class__())
         else:
-            # if no doc specified, create a default one
-            if not self.documents:
-                default_doc = Document(title="__default__")
-                self.documents.append(default_doc)
-            self.documents[-1].add_chunk(chunk)
+            self.build_index(BallTreeIndex())
+        
 
-    def add_chunks(
-        self,
-        chunks: List[Chunk],
-        document_id: Optional[UUID] = None
-    ) -> None:
-        """
-        Add a Chunk into a specific Document (or into a default 'root' doc).
-        """
-        if len(chunks[0].embedding) != EMBEDDING_DIM:
-            raise ValueError(
-                f"Chunk embedding dimension {len(chunks[0].embedding)} does not match expected dimension {EMBEDDING_DIM}"
-            )
-        if document_id:
-            # find the document
-            for d in self.documents:
-                if d.id == document_id:
-                    if (len(chunks) == 1 and isinstance(chunks[0], Chunk)):
-                        d.add_chunk(chunks[0])
-                    d.add_chunks(chunks=chunks)
-                    break
-            else:
-                raise KeyError(f"No document with id={document_id} found")
-        else:
-            # if no doc specified, create a default one
-            if not self.documents:
-                default_doc = Document(title="__default__")
-                self.documents.append(default_doc)
-            if len(chunks) == 1 and isinstance(chunks[0], Chunk):
-                self.documents[-1].add_chunk(chunks[0])
-            self.documents[-1].add_chunks(chunks)
-
-    def delete_chunks(self, chunks: Optional[Union[UUID, List[UUID]]] = None) -> None:
+    def delete_chunks(self, chunk_ids: List[UUID] | None = None) -> None:
         """
         Unified method to delete Chunks by ID, list of IDs, or all Chunks.
         """
-        if chunks is None:
-            self._delete_all_chunks()
-        elif isinstance(chunks, UUID):
-            self._remove_chunk(chunks)
-        elif isinstance(chunks, list):
-            for chunk_id in chunks:
-                self._remove_chunk(chunk_id)
-        if self.index is not None:
-            # rebuilds the index
-            self.build_index(self.index.__class__())
-        else:
-            self.build_index(BruteForceIndex())
+        if chunk_ids is None:
+            self.chunks.clear()
+        elif isinstance(chunk_ids, list):
+            self.chunks = [chunk for chunk in self.chunks if chunk.id not in chunk_ids]
+        self.build_index(self.index.__class__() if self.index else BallTreeIndex())
 
-    def get_all_chunks(self) -> List[Chunk]:
-        """Flatten all chunk embeddings in document order."""
-        vectors: List[Chunk] = []
-        for document in self.documents:
-            chunks = document.get_all_chunks()
-            vectors.extend(chunks)
-        return vectors
+    def get_all_chunks(self) -> Tuple[Chunk, ...]:
+        """Get all chunks in this Library as immutable tuples."""
+        return tuple(self.chunks)
+        
+    # TODO: use delete_chunks and pass an array with a single ID
+    # def _remove_chunk(self, chunk_id: UUID) -> None:
+    #     """
+    #     Remove the given Chunk from whichever Document it lives in.
+    #     """
+    #     for d in self.documents:
+    #         try:
+    #             d.remove_chunk(chunk_id)
+    #             return
+    #         except KeyError:
+    #             continue
+    #     raise KeyError(f"No chunk with id={chunk_id} in any document")
 
-    def _remove_chunk(self, chunk_id: UUID) -> None:
-        """
-        Remove the given Chunk from whichever Document it lives in.
-        """
-        for d in self.documents:
-            try:
-                d.remove_chunk(chunk_id)
-                return
-            except KeyError:
-                continue
-        raise KeyError(f"No chunk with id={chunk_id} in any document")
-
-    def _delete_all_chunks(self) -> None:
-        """
-        Remove all Chunks from all Documents in this Library.
-        """
-        for document in self.documents:
-            document.chunks.clear()
-        self.index = None
+    # def _delete_all_chunks(self) -> None:
+    #     """
+    #     Remove all Chunks from all Documents in this Library.
+    #     """
+    #     for document in self.documents:
+    #         document.chunks.clear()
+    #     self.index = None
 
     def build_index(self, index: BaseIndex) -> None:
         """
         (Re)build the in-memory index for this Library.
         """
-        all_vectors = [c.embedding for c in self.get_all_chunks()]
-        all_ids = [chunk.id for d in self.documents for chunk in d.chunks]
-        index.build(all_vectors, all_ids)
+        all_chunks = self.get_all_chunks()
+        all_embeddings = [chunk.embedding for chunk in all_chunks]
+        all_ids = [chunk.id for chunk in all_chunks]
+        index.build(all_embeddings, all_ids)
         self.index = index
 
     def search(
@@ -214,6 +135,6 @@ class Library(BaseModel):
             "id": str(self.id),
             "name": self.name,
             "metadata": self.metadata,
-            "created_at": self.created_at.isoformat(),
-            "documents": [d.to_dict() for d in self.documents],
+            # "created_at": self.created_at.isoformat(),
+            # "documents": [d.to_dict() for d in self.documents],
         }
