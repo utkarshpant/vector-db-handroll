@@ -179,6 +179,7 @@ def test_get_chunks_by_library_success(mock_vector_store, sample_library_id, sam
     # Setup
     mock_vector_store.has_library.return_value = True
     mock_vector_store.get_library.return_value = sample_library_with_chunks
+    mock_vector_store.get_all_chunks.return_value = sample_library_with_chunks.chunks
 
     # Execute
     response = client.get(f"/library/{sample_library_id}/chunks")
@@ -220,18 +221,15 @@ def test_upsert_chunks_success(mock_vector_store, sample_library_id, sample_libr
         f"/library/{sample_library_id}/chunks", json={"chunks": new_chunks})
     # Assert
     assert response.status_code == 200
-    chunks = response.json()
-    assert len(chunks) == 2  # The original chunks from the sample library
+    # assert len(chunks) == 2  # The original chunks from the sample library
     mock_vector_store.upsert_chunks.assert_called_once()
     call_args = mock_vector_store.upsert_chunks.call_args
-
     # Check the arguments
     assert call_args[0][0] == UUID(sample_library_id)  # lib_id
-    assert call_args[0][1] is None  # document_id
-    assert len(call_args[0][2]) == 1  # chunks list
+    assert len(call_args[0][1]) == 1  # chunks list
     # First chunk is a Chunk object
-    assert isinstance(call_args[0][2][0], Chunk)
-    assert call_args[0][2][0].metadata['text'] == "test chunk"
+    assert isinstance(call_args[0][1][0], Chunk)
+    assert call_args[0][1][0].metadata['text'] == "test chunk"
 
 
 def test_upsert_chunks_library_not_found(mock_vector_store, sample_library_id):

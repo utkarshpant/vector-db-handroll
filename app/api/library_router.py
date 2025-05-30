@@ -102,30 +102,11 @@ def upsert_chunks(upsertChunksDto: UpsertChunksDto, lib_id: str):
     if not vector_store.has_library(UUID(lib_id)):
         raise HTTPException(status_code=404, detail="Library not found")
 
-    library = vector_store.get_library(UUID(lib_id))
-    # Filter chunks if filters are provided
-    chunks_to_upsert = library.get_all_chunks()
-    if upsertChunksDto.filters is not None and len(chunks_to_upsert) > 0:
-        filters = Filter(root=upsertChunksDto.filters)
-        chunks_to_upsert = [
-            chunk for chunk in chunks_to_upsert
-            if passes_filter(chunk.metadata, filters)
-        ]
-
-    # Convert MinimalChunk to Chunk objects
-    chunk_objects = [
-        Chunk(embedding=chunk.embedding, metadata=chunk.metadata,
-              id=chunk.id if chunk.id else uuid4())
-        for chunk in chunks_to_upsert
-    ] if len(chunks_to_upsert) > 0 else [Chunk(embedding=chunk.embedding, metadata=chunk.metadata, id=chunk.id if chunk.id is not None else uuid4()) for chunk in upsertChunksDto.chunks]
-
-    vector_store.upsert_chunks(
-        UUID(lib_id), upsertChunksDto.document_id, chunk_objects)
-    library = vector_store.get_library(UUID(lib_id))
-    all_chunks = [chunk.model_dump()
-                  for doc in library.documents for chunk in doc.chunks]
-    vector_store.build_index(UUID(lib_id))  # Rebuild index after upsert
-    return all_chunks
+    hydrated_chunks = [
+        Chunk(id=chunk.id, embedding=chunk.embedding, metadata=chunk.metadata) for chunk in upsertChunksDto.chunks
+    ]
+    vector_store.upsert_chunks(UUID(lib_id), hydrated_chunks)
+    return [chunk.model_dump() for chunk in vector_store.get_all_chunks(lib_id=UUID(lib_id))]
 
 
 @router.post("/{lib_id}/chunks")

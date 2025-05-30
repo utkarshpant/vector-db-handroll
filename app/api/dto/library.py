@@ -60,7 +60,6 @@ class UpsertChunksDto(BaseModel):
     """
     Data Transfer Object (DTO) for upserting chunks into a library.
     """
-    document_id: Optional[UUID] = Field(None, description="ID of the Document to which chunks will be added")
     chunks: list[MinimalChunk] = Field(..., description="List of chunks to be upserted, each chunk is a dict with its properties")
     filters: Optional[Dict[str, Condition]] = Field(
         None, description="Optional filters to apply when upserting chunks"
