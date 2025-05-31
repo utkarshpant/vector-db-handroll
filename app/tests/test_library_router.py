@@ -7,6 +7,8 @@ from datetime import datetime
 from app.main import app
 from app.core.Chunk import Chunk
 from app.core.Library import Library
+import threading
+import time
 
 client = TestClient(app)
 
@@ -34,24 +36,24 @@ def sample_library(sample_library_id):
 
 @pytest.fixture
 def sample_library_with_chunks(sample_library_id):
-    chunks=[
-            Chunk(
-                id=uuid4(),
-                metadata={
-                    "text": "Chunk 1 content",
-                    "created_at": datetime.now().isoformat()
-                },
-                embedding=np.random.rand(1536).tolist()  # Example embedding
-            ),
-            Chunk(
-                id=uuid4(),
-                metadata={
-                    "text": "Chunk 2 content",
-                    "created_at": datetime.now().isoformat()
-                },
-                embedding=np.random.rand(1536).tolist()
-            )
-        ]
+    chunks = [
+        Chunk(
+            id=uuid4(),
+            metadata={
+                "text": "Chunk 1 content",
+                "created_at": datetime.now().isoformat()
+            },
+            embedding=np.random.rand(1536).tolist()  # Example embedding
+        ),
+        Chunk(
+            id=uuid4(),
+            metadata={
+                "text": "Chunk 2 content",
+                "created_at": datetime.now().isoformat()
+            },
+            embedding=np.random.rand(1536).tolist()
+        )
+    ]
 
     return Library(
         id=UUID(sample_library_id),
@@ -276,7 +278,7 @@ def test_upsert_chunks_with_filters_matching(mock_vector_store, sample_library_i
             "embedding": np.random.rand(1536).tolist()
         }
     ]
-    
+
     # Add filters to only upsert chunks with category="important"
     filters = {
         "category": {"eq": "important"}
@@ -284,7 +286,7 @@ def test_upsert_chunks_with_filters_matching(mock_vector_store, sample_library_i
 
     # Execute
     response = client.put(
-        f"/library/{sample_library_id}/chunks", 
+        f"/library/{sample_library_id}/chunks",
         json={"chunks": new_chunks, "filters": filters}
     )
 
@@ -292,7 +294,7 @@ def test_upsert_chunks_with_filters_matching(mock_vector_store, sample_library_i
     assert response.status_code == 200
     mock_vector_store.upsert_chunks.assert_called_once()
     call_args = mock_vector_store.upsert_chunks.call_args
-    
+
     # Should only upsert the chunk with category="important"
     assert len(call_args[0][1]) == 1
     assert call_args[0][1][0].metadata['category'] == "important"
@@ -311,7 +313,7 @@ def test_upsert_chunks_with_filters_no_matches(mock_vector_store, sample_library
             "embedding": np.random.rand(1536).tolist()
         }
     ]
-    
+
     # Add filters that won't match any chunks
     filters = {
         "category": {"eq": "nonexistent"}
@@ -319,7 +321,7 @@ def test_upsert_chunks_with_filters_no_matches(mock_vector_store, sample_library
 
     # Execute
     response = client.put(
-        f"/library/{sample_library_id}/chunks", 
+        f"/library/{sample_library_id}/chunks",
         json={"chunks": new_chunks, "filters": filters}
     )
 
@@ -327,7 +329,7 @@ def test_upsert_chunks_with_filters_no_matches(mock_vector_store, sample_library
     assert response.status_code == 200
     mock_vector_store.upsert_chunks.assert_called_once()
     call_args = mock_vector_store.upsert_chunks.call_args
-    
+
     # Should upsert no chunks
     assert len(call_args[0][1]) == 0
 
@@ -350,7 +352,7 @@ def test_upsert_chunks_with_contains_filter(mock_vector_store, sample_library_id
             "embedding": np.random.rand(1536).tolist()
         }
     ]
-    
+
     # Add filters to only upsert chunks containing "important"
     filters = {
         "text": {"contains": "important"}
@@ -358,7 +360,7 @@ def test_upsert_chunks_with_contains_filter(mock_vector_store, sample_library_id
 
     # Execute
     response = client.put(
-        f"/library/{sample_library_id}/chunks", 
+        f"/library/{sample_library_id}/chunks",
         json={"chunks": new_chunks, "filters": filters}
     )
 
@@ -366,7 +368,7 @@ def test_upsert_chunks_with_contains_filter(mock_vector_store, sample_library_id
     assert response.status_code == 200
     mock_vector_store.upsert_chunks.assert_called_once()
     call_args = mock_vector_store.upsert_chunks.call_args
-    
+
     # Should only upsert the chunk containing "important"
     assert len(call_args[0][1]) == 1
     assert "important" in call_args[0][1][0].metadata['text']
@@ -395,7 +397,7 @@ def test_upsert_chunks_with_multiple_filters(mock_vector_store, sample_library_i
             "embedding": np.random.rand(1536).tolist()
         }
     ]
-    
+
     # Add filters for priority >= 5 AND category = "important"
     filters = {
         "priority": {"gte": 5},
@@ -404,7 +406,7 @@ def test_upsert_chunks_with_multiple_filters(mock_vector_store, sample_library_i
 
     # Execute
     response = client.put(
-        f"/library/{sample_library_id}/chunks", 
+        f"/library/{sample_library_id}/chunks",
         json={"chunks": new_chunks, "filters": filters}
     )
 
@@ -412,7 +414,7 @@ def test_upsert_chunks_with_multiple_filters(mock_vector_store, sample_library_i
     assert response.status_code == 200
     mock_vector_store.upsert_chunks.assert_called_once()
     call_args = mock_vector_store.upsert_chunks.call_args
-    
+
     # Should only upsert the chunk with priority >= 5 AND category = "important"
     assert len(call_args[0][1]) == 1
     assert call_args[0][1][0].metadata['priority'] == 5
@@ -423,7 +425,7 @@ def test_delete_chunks_with_filters_success(mock_vector_store, sample_library_id
     """Test delete chunks with filters"""
     # Setup
     mock_vector_store.has_library.return_value = True
-    
+
     # Create a mock library with get_all_chunks method for delete operation
     mock_library = MagicMock()
     mock_library.get_all_chunks.return_value = [
@@ -439,7 +441,7 @@ def test_delete_chunks_with_filters_success(mock_vector_store, sample_library_id
         )
     ]
     mock_vector_store.get_library.return_value = mock_library
-    
+
     # Add filters to only delete chunks with category="important"
     filters = {
         "category": {"eq": "important"}
@@ -447,7 +449,7 @@ def test_delete_chunks_with_filters_success(mock_vector_store, sample_library_id
 
     # Execute - now using POST method for delete chunks
     response = client.post(
-        f"/library/{sample_library_id}/chunks/delete", 
+        f"/library/{sample_library_id}/chunks/delete",
         json={"filters": filters}
     )
 
@@ -463,10 +465,10 @@ def test_delete_chunks_with_contains_filter(mock_vector_store, sample_library_id
     """Test delete chunks with contains filter"""
     # Setup
     mock_vector_store.has_library.return_value = True
-    
+
     chunk_id_1 = uuid4()
     chunk_id_2 = uuid4()
-    
+
     mock_library = MagicMock()
     mock_library.get_all_chunks.return_value = [
         Chunk(
@@ -481,7 +483,7 @@ def test_delete_chunks_with_contains_filter(mock_vector_store, sample_library_id
         )
     ]
     mock_vector_store.get_library.return_value = mock_library
-    
+
     # Add filters to only delete chunks containing "urgent"
     filters = {
         "text": {"contains": "urgent"}
@@ -489,7 +491,7 @@ def test_delete_chunks_with_contains_filter(mock_vector_store, sample_library_id
 
     # Execute - using POST method for delete chunks
     response = client.post(
-        f"/library/{sample_library_id}/chunks/delete", 
+        f"/library/{sample_library_id}/chunks/delete",
         json={"filters": filters}
     )
 
@@ -504,13 +506,13 @@ def test_delete_chunks_with_no_filters(mock_vector_store, sample_library_id):
     """Test delete chunks without any filters (delete all)"""
     # Setup
     mock_vector_store.has_library.return_value = True
-    
+
     mock_library = MagicMock()
     mock_vector_store.get_library.return_value = mock_library
 
     # Execute - no filters provided, using POST method
     response = client.post(
-        f"/library/{sample_library_id}/chunks/delete", 
+        f"/library/{sample_library_id}/chunks/delete",
         json={}
     )
 
@@ -524,7 +526,7 @@ def test_delete_chunks_with_filters_no_matches(mock_vector_store, sample_library
     """Test delete chunks with filters that don't match any chunks"""
     # Setup
     mock_vector_store.has_library.return_value = True
-    
+
     mock_library = MagicMock()
     mock_library.get_all_chunks.return_value = [
         Chunk(
@@ -534,7 +536,7 @@ def test_delete_chunks_with_filters_no_matches(mock_vector_store, sample_library
         )
     ]
     mock_vector_store.get_library.return_value = mock_library
-    
+
     # Add filters that won't match any chunks
     filters = {
         "category": {"eq": "nonexistent"}
@@ -542,7 +544,7 @@ def test_delete_chunks_with_filters_no_matches(mock_vector_store, sample_library
 
     # Execute - using POST method for delete chunks
     response = client.post(
-        f"/library/{sample_library_id}/chunks/delete", 
+        f"/library/{sample_library_id}/chunks/delete",
         json={"filters": filters}
     )
 
@@ -557,11 +559,11 @@ def test_delete_chunks_with_numeric_filters(mock_vector_store, sample_library_id
     """Test delete chunks with numeric comparison filters"""
     # Setup
     mock_vector_store.has_library.return_value = True
-    
+
     chunk_id_1 = uuid4()
     chunk_id_2 = uuid4()
     chunk_id_3 = uuid4()
-    
+
     mock_library = MagicMock()
     mock_library.get_all_chunks.return_value = [
         Chunk(
@@ -581,7 +583,7 @@ def test_delete_chunks_with_numeric_filters(mock_vector_store, sample_library_id
         )
     ]
     mock_vector_store.get_library.return_value = mock_library
-    
+
     # Add filters to delete chunks with priority >= 5
     filters = {
         "priority": {"gte": 5}
@@ -589,7 +591,7 @@ def test_delete_chunks_with_numeric_filters(mock_vector_store, sample_library_id
 
     # Execute - using POST method for delete chunks
     response = client.post(
-        f"/library/{sample_library_id}/chunks/delete", 
+        f"/library/{sample_library_id}/chunks/delete",
         json={"filters": filters}
     )
 
@@ -599,7 +601,8 @@ def test_delete_chunks_with_numeric_filters(mock_vector_store, sample_library_id
     # Should call delete_chunks twice for chunks with priority >= 5
     assert mock_library.delete_chunks.call_count == 2
     # Verify the correct chunk IDs were passed
-    call_args_list = [call[0][0][0] for call in mock_library.delete_chunks.call_args_list]
+    call_args_list = [call[0][0][0]
+                      for call in mock_library.delete_chunks.call_args_list]
     assert chunk_id_1 in call_args_list  # priority 8
     assert chunk_id_3 in call_args_list  # priority 5
     assert chunk_id_2 not in call_args_list  # priority 3
@@ -616,10 +619,49 @@ def test_delete_chunks_library_not_found(mock_vector_store, sample_library_id):
 
     # Execute - using POST method for delete chunks
     response = client.post(
-        f"/library/{sample_library_id}/chunks/delete", 
+        f"/library/{sample_library_id}/chunks/delete",
         json={"filters": filters}
     )
 
     # Assert
     assert response.status_code == 404
     assert "Library not found" in response.json()["detail"]
+
+
+def test_concurrent_upserts_no_race(tmp_path):
+    """
+    Test that concurrent upserts to the same library do not cause data races or errors.
+    """
+    client = TestClient(app)
+    # Create a library first
+    response = client.post(
+        "/library/", json={"name": "RaceTest", "metadata": {}})
+    assert response.status_code == 200
+    lib_id = response.json()["id"]
+
+    def upsert_chunk(idx):
+        chunk = {
+            "id": str(uuid4()),
+            "metadata": {"source": f"thread-{idx}",
+                         "created_at": datetime.now().isoformat(),
+                         "text": f"chunk {idx}"
+                         },
+            "embedding": np.random.rand(1536).tolist()
+        }
+        resp = client.put(
+            f"/library/{lib_id}/chunks", json={"chunks": [chunk]})
+        assert resp.status_code == 200
+
+    threads = [threading.Thread(target=upsert_chunk, args=(i,))
+               for i in range(5)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    # verify that all chunks are present
+    response = client.get(f"/library/{lib_id}/chunks")
+    assert response.status_code == 200
+    chunks = response.json()
+    # there should ideally be 5 chunks;
+    assert len(chunks) >= 5

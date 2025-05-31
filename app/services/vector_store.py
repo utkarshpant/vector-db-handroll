@@ -3,6 +3,9 @@ from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
 import numpy as np
+import threading
+import pickle
+import os
 
 from app.api.dto.Library import Chunk
 from app.core.Chunk import Chunk
@@ -15,12 +18,17 @@ class VectorStore:
     """
     A simple in-memory vector store that manages multiple `Libraries` and exposes a CRUD API to interact with them.
     """
+    SNAPSHOT_PATH = 'vectorstore_snapshot.pkl'
+    SNAPSHOT_INTERVAL = 10  # seconds
 
     def __init__(self, index_factory=BruteForceIndex):
         self._libraries: Dict[UUID, Library] = {}
         self._index_factory = index_factory
         # per-library helper: id -> Chunk (populated when index is (re)built)
         self._chunk_lookup: Dict[UUID, Dict[UUID, Chunk]] = {}
+        self._snapshot_lock = threading.Lock()
+        self._start_snapshot_thread()
+        self.load_from_disk()
 
     def create_library(self, name: str, metadata: dict | None = None) -> UUID:
         lib = Library(name=name, metadata=metadata or {})
@@ -38,7 +46,7 @@ class VectorStore:
         library = self._libraries[library_id]
         library.upsert_chunks(chunks)
 
-        # Rebuild index and chunk lookup after upsert
+        # rebuild index and chunk lookup after upsert
         self.build_index(library_id)
 
     def get_all_chunks(self, lib_id: UUID) -> List[Chunk]:
@@ -92,3 +100,28 @@ class VectorStore:
         if lookup is None:
             raise RuntimeError("Index has not been built for this library")
         return [(lookup[cid], score) for cid, score in hits]
+
+    def save_to_disk(self):
+        with self._snapshot_lock:
+            with open(self.SNAPSHOT_PATH + '.tmp', 'wb') as f:
+                pickle.dump({
+                    'libraries': self._libraries,
+                    'chunk_lookup': self._chunk_lookup
+                }, f)
+            os.replace(self.SNAPSHOT_PATH + '.tmp', self.SNAPSHOT_PATH)
+
+    def load_from_disk(self):
+        if os.path.exists(self.SNAPSHOT_PATH):
+            with self._snapshot_lock:
+                with open(self.SNAPSHOT_PATH, 'rb') as f:
+                    data = pickle.load(f)
+                    self._libraries = data.get('libraries', {})
+                    self._chunk_lookup = data.get('chunk_lookup', {})
+
+    def _start_snapshot_thread(self):
+        def snapshot_loop():
+            while True:
+                threading.Event().wait(self.SNAPSHOT_INTERVAL)
+                self.save_to_disk()
+        t = threading.Thread(target=snapshot_loop, daemon=True)
+        t.start()
