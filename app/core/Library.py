@@ -42,10 +42,16 @@ class Library(BaseModel):
         default=BruteForceIndex(),
         description="In-memory vector index for this Library"
     )
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc),
-        description="UTC timestamp when the library was created"
-    )
+    # created_at: datetime = Field(
+    #     default_factory=lambda: datetime.now(timezone.utc),
+    #     description="UTC timestamp when the library was created"
+    # )
+
+    @field_validator("metadata", mode="before")
+    def _ensure_created_at(cls, v: dict[str, Any]) -> dict[str, Any]:
+        if "created_at" not in v:
+            v["created_at"] = datetime.now(timezone.utc).isoformat()
+        return v
 
     def upsert_chunks(self, chunks_to_upsert: List[Chunk]) -> None:
         """
@@ -85,6 +91,8 @@ class Library(BaseModel):
     def get_all_chunks(self) -> Tuple[Chunk, ...]:
         """Get all chunks in this Library as immutable tuples."""
         return tuple(self.chunks)
+    
+    
         
     # TODO: use delete_chunks and pass an array with a single ID
     # def _remove_chunk(self, chunk_id: UUID) -> None:
@@ -138,3 +146,7 @@ class Library(BaseModel):
             # "created_at": self.created_at.isoformat(),
             # "documents": [d.to_dict() for d in self.documents],
         }
+
+    @property
+    def index_name(self) -> str:
+        return getattr(self.index, "name", "Unknown")

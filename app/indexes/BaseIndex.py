@@ -15,6 +15,11 @@ class BaseIndex(ABC):
       - search: return top-k nearest neighbors for a query vector.
     """
 
+    name: str
+    """
+    Name of the index implementation, used for identification.
+    """
+
     @abstractmethod
     def build(self, vectors: List[List[float]], ids: List[UUID]) -> None:
         """

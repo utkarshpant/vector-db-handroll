@@ -1,0 +1,139 @@
+{
+	"info": {
+		"_postman_id": "ce23ba7a-651b-41f8-9b95-e102d76c390b",
+		"name": "Vector DB",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "12457879"
+	},
+	"item": [
+		{
+			"name": "New Folder",
+			"item": [
+				{
+					"name": "Query",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Library",
+			"item": [
+				{
+					"name": "List Libraries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "http://localhost:8000/library"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Library by ID",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Check if Library Exists",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Create Library",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8000/library?name=test_library",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8000",
+							"path": [
+								"library"
+							],
+							"query": [
+								{
+									"key": "name",
+									"value": "test_library"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Library",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8000/library/:libraryId",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8000",
+							"path": [
+								"library",
+								":libraryId"
+							],
+							"variable": [
+								{
+									"key": "libraryId",
+									"value": "736bed36-9403-42f2-966a-0a4cfb2e6040",
+									"description": "The ID of the Library to delete."
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get all Chunks by Library ID",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Upsert Chunks with Optional Filters",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Chunks in a Library",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			],
+			"description": "The Stack vDB REST API mirrors the Qdrant REST API as far as possible. To that end, `Libraries` in Stack vDB are analogous to `Collections` in Qdrant. The `Library` resource exposes the following endpoints:\n\n1. List all Libraries\n    \n2. Create\n    \n3. Check if exists by ID\n    \n4. Get by ID\n    \n5. Delete by ID\n    \n6. Get all Chunks"
+		},
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "http://localhost:8000/health"
+			},
+			"response": []
+		}
+	]
+}
