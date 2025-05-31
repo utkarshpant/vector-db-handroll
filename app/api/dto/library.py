@@ -90,3 +90,6 @@ class QueryDto(BaseModel):
     Data Transfer Object (DTO) for querying a library.
     """
     query: list[float] = Field(..., description="Query vector for searching chunks")
+    filters: Optional[Dict[str, Condition]] = Field(
+        None, description="Optional filters to apply when querying chunks"
+    )

@@ -48,8 +48,8 @@ def create_library_service(libraryData: LibraryCreate):
             id=library.id,
             name=library.name,
             metadata=library.metadata,
-            created_at=library.metadata['created_at'],
-            total_chunks=len(library.chunks)
+            total_chunks=len(library.chunks),
+            index_name=library.index_name
         )
         return LibraryResponse.model_validate(library)
     finally:
@@ -147,6 +147,13 @@ def search_chunks_by_library_service(lib_id: str, queryDto: QueryDto, k: int = 5
         results = vector_store.search(
             UUID(lib_id), queryDto.query, k=k
         )
+        if not queryDto.filters:
+            return results
+        filters = Filter(root=queryDto.filters)
+        results = [
+            (chunk, score) for chunk, score in results
+            if passes_filter(chunk.metadata, filters)
+        ]
         return results
     finally:
         rw_lock.release_read()

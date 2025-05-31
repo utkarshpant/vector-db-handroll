@@ -19,7 +19,6 @@ from app.services.library_service import (
 
 # DTOs for different operations on a Library
 from app.api.dto.Library import DeleteChunksDto, LibraryListItem, LibraryCreate, LibraryResponse, QueryDto, UpsertChunksDto
-from app.utils.filters import passes_filter
 
 router = APIRouter()
 
