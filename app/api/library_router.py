@@ -4,12 +4,23 @@ from app.core.Filter import Filter
 from app.core.Chunk import EMBEDDING_DIM, Chunk
 from app.core.Library import Library
 from app.services.vector_store import VectorStore
+from app.services.library_service import (
+    list_libraries_service,
+    get_library_by_id_service,
+    create_library_service,
+    delete_library_service,
+    library_exists_service,
+    get_chunks_by_library_service,
+    upsert_chunks_service,
+    delete_chunks_by_library_service,
+    count_chunks_by_library_service,
+    search_chunks_by_library_service,
+)
 
 # DTOs for different operations on a Library
 from app.api.dto.Library import DeleteChunksDto, LibraryListItem, LibraryCreate, LibraryResponse, QueryDto, UpsertChunksDto
 from app.utils.filters import passes_filter
 
-vector_store = VectorStore()
 router = APIRouter()
 
 
@@ -18,8 +29,7 @@ def list_libraries():
     """
     Index route handler for `/library`. List all libraries in the vector store.
     """
-    libraries = vector_store.get_all_libraries()
-    return [LibraryListItem.model_validate(lib) for lib in libraries]
+    return list_libraries_service()
 
 
 @router.get("/{lib_id}", response_model=LibraryResponse)
@@ -27,17 +37,7 @@ def get_library_by_id(lib_id: str):
     """
     Get a specific library by its ID.
     """
-    if not vector_store.has_library(UUID(lib_id)):
-        raise HTTPException(status_code=404, detail="Library not found")
-    library = vector_store.get_library(UUID(lib_id))
-    library = LibraryResponse(
-        id=library.id,
-        name=library.name,
-        metadata=library.metadata,
-        created_at=library.created_at,
-        total_chunks=len(library.chunks)
-    )
-    return LibraryResponse.model_validate(library)
+    return get_library_by_id_service(lib_id)
 
 
 @router.post('/', response_model=LibraryResponse)
@@ -45,17 +45,7 @@ def createLibrary(libraryData: LibraryCreate):
     """
     Create a new library with the given name.
     """
-    lib_id = vector_store.create_library(
-        libraryData.name, libraryData.metadata)
-    library = vector_store.get_library(lib_id)
-    library = LibraryResponse(
-        id=library.id,
-        name=library.name,
-        metadata=library.metadata,
-        created_at=library.created_at,
-        total_chunks=len(library.chunks)
-    )
-    return LibraryResponse.model_validate(library)
+    return create_library_service(libraryData)
 
 
 @router.delete("/{lib_id}")
@@ -63,10 +53,7 @@ def delete_library(lib_id: str):
     """
     Delete a library by its ID.
     """
-    if (not vector_store.has_library(UUID(lib_id))):
-        raise HTTPException(status_code=404, detail="Library not found")
-    vector_store.delete_library(UUID(lib_id))
-    return {"status": "ok"}
+    return delete_library_service(lib_id)
 
 
 @router.get("/{lib_id}/exists")
@@ -74,11 +61,7 @@ def library_exists(lib_id: str):
     """
     Check if a library exists by its ID.
     """
-    try:
-        vector_store.get_library(UUID(lib_id))
-        return {"exists": True}
-    except KeyError:
-        return {"exists": False}
+    return library_exists_service(lib_id)
 
 
 @router.get("/{lib_id}/chunks", response_model=list[Chunk])
@@ -86,12 +69,7 @@ def get_chunks_by_library(lib_id: str):
     """
     Get all chunks in a library by its ID.
     """
-    if not vector_store.has_library(UUID(lib_id)):
-        raise HTTPException(status_code=404, detail="Library not found")
-
-    library = vector_store.get_library(UUID(lib_id))
-    chunks = [chunk.model_dump() for chunk in library.get_all_chunks()]
-    return chunks
+    return get_chunks_by_library_service(lib_id)
 
 
 @router.put("/{lib_id}/chunks", response_model=list[Chunk])
@@ -99,21 +77,7 @@ def upsert_chunks(upsertChunksDto: UpsertChunksDto, lib_id: str):
     """
     Upsert chunks into a library by its ID.
     """
-    if not vector_store.has_library(UUID(lib_id)):
-        raise HTTPException(status_code=404, detail="Library not found")
-
-    hydrated_chunks = [
-        Chunk.model_validate(obj=chunk) for chunk in upsertChunksDto.chunks
-    ]
-    # if filters are present, only update those Chunks that match the filter criteria
-    if (upsertChunksDto.filters):
-        filters = Filter(root=upsertChunksDto.filters)
-        print(filters)
-        hydrated_chunks = [
-            chunk for chunk in hydrated_chunks if passes_filter(chunk.metadata, filters)
-        ]
-    vector_store.upsert_chunks(UUID(lib_id), hydrated_chunks)
-    return [chunk.model_dump() for chunk in hydrated_chunks]
+    return upsert_chunks_service(upsertChunksDto, lib_id)
 
 
 @router.post("/{lib_id}/chunks/delete")
@@ -121,26 +85,7 @@ def delete_chunks_by_library(deleteChunksDto: DeleteChunksDto, lib_id: str):
     """
     Delete all chunks in a library by its ID, optionally delete only those that match a filter.
     """
-    if not vector_store.has_library(UUID(lib_id)):
-        raise HTTPException(status_code=404, detail="Library not found")
-
-    library = vector_store.get_library(UUID(lib_id))
-
-    # If no filters, delete all chunks
-    if not deleteChunksDto.filters:
-        library.delete_chunks()
-        return {"deleted": "all"}
-
-    # Otherwise, delete only chunks matching the filter
-    filters = Filter(root=deleteChunksDto.filters)
-    filtered_chunks = [
-        chunk for chunk in library.get_all_chunks()
-        if passes_filter(chunk.metadata, filters)
-    ]
-    chunk_ids_to_delete = [chunk.id for chunk in filtered_chunks]
-    if chunk_ids_to_delete:
-        library.delete_chunks(chunk_ids_to_delete)
-    return {"deleted": len(chunk_ids_to_delete)}
+    return delete_chunks_by_library_service(deleteChunksDto, lib_id)
 
 
 @router.get("/{lib_id}/count")
@@ -148,11 +93,7 @@ def count_chunks_by_library(lib_id: str):
     """
     Count the number of chunks in a library by its ID.
     """
-    if not vector_store.has_library(UUID(lib_id)):
-        raise HTTPException(status_code=404, detail="Library not found")
-
-    library = vector_store.get_library(UUID(lib_id))
-    return {"count": len(library.get_all_chunks())}
+    return count_chunks_by_library_service(lib_id)
 
 
 @router.post("/{lib_id}/search")
@@ -160,12 +101,4 @@ def search_chunks_by_library(lib_id: str, queryDto: QueryDto, k: int = 5):
     """
     Search for chunks in a library by its ID using a query string. Optionally specify `k`, the number of results to return (default is 5).
     """
-    if (len(queryDto.query) != EMBEDDING_DIM):
-        raise HTTPException(
-            status_code=400, detail="Query vector must be of length 1536")
-    if not vector_store.has_library(UUID(lib_id)):
-        raise HTTPException(status_code=404, detail="Library not found")
-    results = vector_store.search(
-        UUID(lib_id), queryDto.query, k=k
-    )
-    return results
+    return search_chunks_by_library_service(lib_id, queryDto, k)

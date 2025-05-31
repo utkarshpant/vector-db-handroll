@@ -13,7 +13,7 @@ client = TestClient(app)
 
 @pytest.fixture
 def mock_vector_store():
-    with patch('app.api.library_router.vector_store') as mock:
+    with patch('app.services.library_service.vector_store') as mock:
         yield mock
 
 
@@ -294,8 +294,8 @@ def test_upsert_chunks_with_filters_matching(mock_vector_store, sample_library_i
     call_args = mock_vector_store.upsert_chunks.call_args
     
     # Should only upsert the chunk with category="important"
-    assert len(call_args[0][2]) == 1
-    assert call_args[0][2][0].metadata['category'] == "important"
+    assert len(call_args[0][1]) == 1
+    assert call_args[0][1][0].metadata['category'] == "important"
 
 
 def test_upsert_chunks_with_filters_no_matches(mock_vector_store, sample_library_id, sample_library_with_chunks):
@@ -329,7 +329,7 @@ def test_upsert_chunks_with_filters_no_matches(mock_vector_store, sample_library
     call_args = mock_vector_store.upsert_chunks.call_args
     
     # Should upsert no chunks
-    assert len(call_args[0][2]) == 0
+    assert len(call_args[0][1]) == 0
 
 
 def test_upsert_chunks_with_contains_filter(mock_vector_store, sample_library_id, sample_library_with_chunks):
@@ -368,8 +368,8 @@ def test_upsert_chunks_with_contains_filter(mock_vector_store, sample_library_id
     call_args = mock_vector_store.upsert_chunks.call_args
     
     # Should only upsert the chunk containing "important"
-    assert len(call_args[0][2]) == 1
-    assert "important" in call_args[0][2][0].metadata['text']
+    assert len(call_args[0][1]) == 1
+    assert "important" in call_args[0][1][0].metadata['text']
 
 
 def test_upsert_chunks_with_multiple_filters(mock_vector_store, sample_library_id, sample_library_with_chunks):
@@ -414,9 +414,9 @@ def test_upsert_chunks_with_multiple_filters(mock_vector_store, sample_library_i
     call_args = mock_vector_store.upsert_chunks.call_args
     
     # Should only upsert the chunk with priority >= 5 AND category = "important"
-    assert len(call_args[0][2]) == 1
-    assert call_args[0][2][0].metadata['priority'] == 5
-    assert call_args[0][2][0].metadata['category'] == "important"
+    assert len(call_args[0][1]) == 1
+    assert call_args[0][1][0].metadata['priority'] == 5
+    assert call_args[0][1][0].metadata['category'] == "important"
 
 
 def test_delete_chunks_with_filters_success(mock_vector_store, sample_library_id):
@@ -447,7 +447,7 @@ def test_delete_chunks_with_filters_success(mock_vector_store, sample_library_id
 
     # Execute - now using POST method for delete chunks
     response = client.post(
-        f"/library/{sample_library_id}/chunks", 
+        f"/library/{sample_library_id}/chunks/delete", 
         json={"filters": filters}
     )
 
@@ -489,7 +489,7 @@ def test_delete_chunks_with_contains_filter(mock_vector_store, sample_library_id
 
     # Execute - using POST method for delete chunks
     response = client.post(
-        f"/library/{sample_library_id}/chunks", 
+        f"/library/{sample_library_id}/chunks/delete", 
         json={"filters": filters}
     )
 
@@ -510,7 +510,7 @@ def test_delete_chunks_with_no_filters(mock_vector_store, sample_library_id):
 
     # Execute - no filters provided, using POST method
     response = client.post(
-        f"/library/{sample_library_id}/chunks", 
+        f"/library/{sample_library_id}/chunks/delete", 
         json={}
     )
 
@@ -542,7 +542,7 @@ def test_delete_chunks_with_filters_no_matches(mock_vector_store, sample_library
 
     # Execute - using POST method for delete chunks
     response = client.post(
-        f"/library/{sample_library_id}/chunks", 
+        f"/library/{sample_library_id}/chunks/delete", 
         json={"filters": filters}
     )
 
@@ -589,7 +589,7 @@ def test_delete_chunks_with_numeric_filters(mock_vector_store, sample_library_id
 
     # Execute - using POST method for delete chunks
     response = client.post(
-        f"/library/{sample_library_id}/chunks", 
+        f"/library/{sample_library_id}/chunks/delete", 
         json={"filters": filters}
     )
 
@@ -616,7 +616,7 @@ def test_delete_chunks_library_not_found(mock_vector_store, sample_library_id):
 
     # Execute - using POST method for delete chunks
     response = client.post(
-        f"/library/{sample_library_id}/chunks", 
+        f"/library/{sample_library_id}/chunks/delete", 
         json={"filters": filters}
     )
 
