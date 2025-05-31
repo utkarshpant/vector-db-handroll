@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  stack-ai:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - vectorstore_data:/app/vectorstore_data
+
+volumes:
+  vectorstore_data:

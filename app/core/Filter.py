@@ -55,14 +55,11 @@ class Condition(BaseModel):
 
     @model_validator(mode="after")
     def validate_single_operator(cls, condition):
-        """Ensure that exactly one operator is provided per field."""
-        fields = ("eq", "contains", "gte", "lte")
-        num_operators_provided = sum(
-            bool(getattr(condition, field)) for field in fields)
-        if num_operators_provided != 1:
-            raise ValueError("Provide exactly one operator per field")
+        """Ensure exactly one of 'eq', 'contains', 'gte', or 'lte' is set."""
+        operators_present = [condition.eq, condition.contains, condition.gte, condition.lte, condition.gt, condition.lt, condition.ne]
+        if sum(op is not None for op in operators_present) != 1:
+            raise ValueError("Provide exactly one of: eq, contains, gte, lte")
         return condition
-
 
 class Filter(RootModel[dict[str, Condition]]):
     pass
