@@ -1,12 +1,12 @@
 from uuid import UUID, uuid4
 from fastapi import APIRouter, HTTPException
 from app.core.Filter import Filter
-from app.core.Chunk import Chunk
+from app.core.Chunk import EMBEDDING_DIM, Chunk
 from app.core.Library import Library
 from app.services.vector_store import VectorStore
 
 # DTOs for different operations on a Library
-from app.api.dto.Library import DeleteChunksDto, LibraryListItem, LibraryCreate, LibraryResponse, UpsertChunksDto
+from app.api.dto.Library import DeleteChunksDto, LibraryListItem, LibraryCreate, LibraryResponse, QueryDto, UpsertChunksDto
 from app.utils.filters import passes_filter
 
 vector_store = VectorStore()
@@ -141,3 +141,31 @@ def delete_chunks_by_library(deleteChunksDto: DeleteChunksDto, lib_id: str):
     if chunk_ids_to_delete:
         library.delete_chunks(chunk_ids_to_delete)
     return {"deleted": len(chunk_ids_to_delete)}
+
+
+@router.get("/{lib_id}/count")
+def count_chunks_by_library(lib_id: str):
+    """
+    Count the number of chunks in a library by its ID.
+    """
+    if not vector_store.has_library(UUID(lib_id)):
+        raise HTTPException(status_code=404, detail="Library not found")
+
+    library = vector_store.get_library(UUID(lib_id))
+    return {"count": len(library.get_all_chunks())}
+
+
+@router.post("/{lib_id}/search")
+def search_chunks_by_library(lib_id: str, queryDto: QueryDto, k: int = 5):
+    """
+    Search for chunks in a library by its ID using a query string. Optionally specify `k`, the number of results to return (default is 5).
+    """
+    if (len(queryDto.query) != EMBEDDING_DIM):
+        raise HTTPException(
+            status_code=400, detail="Query vector must be of length 1536")
+    if not vector_store.has_library(UUID(lib_id)):
+        raise HTTPException(status_code=404, detail="Library not found")
+    results = vector_store.search(
+        UUID(lib_id), queryDto.query, k=k
+    )
+    return results

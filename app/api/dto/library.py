@@ -80,3 +80,10 @@ class DeleteChunksDto(BaseModel):
     class Config:
         from_attributes = True
         arbitrary_types_allowed = True
+
+
+class QueryDto(BaseModel):
+    """
+    Data Transfer Object (DTO) for querying a library.
+    """
+    query: list[float] = Field(..., description="Query vector for searching chunks")

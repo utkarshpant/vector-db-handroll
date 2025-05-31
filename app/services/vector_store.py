@@ -91,5 +91,4 @@ class VectorStore:
         lookup = self._chunk_lookup.get(lib_id)  # populated by build_index()
         if lookup is None:
             raise RuntimeError("Index has not been built for this library")
-
         return [(lookup[cid], score) for cid, score in hits]

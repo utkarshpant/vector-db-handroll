@@ -14,7 +14,7 @@ class _Ball:
     - `Leaf` if both `left` and `right` are None, containing <= leaf_size points.
     - `Internal` if it has children, containing more than leaf_size points.
     """
-    idx_list: List[float] # indices of the original vectors
+    idx_list: List[int] # indices of the original vectors
     center: List[float] # center of the ball/node
     radius: float # radius of the ball (max cosine distance to center from points in idx_list)
     left: _Ball | None = None
