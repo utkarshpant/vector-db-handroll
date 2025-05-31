@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from datetime import datetime, timezone
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple
 from uuid import uuid4, UUID
 
 import numpy as np
@@ -39,7 +39,7 @@ class Library(BaseModel):
         description="Ordered list of Chunks belonging to this Library"
     )
     index: Optional[BaseIndex | BruteForceIndex | BallTreeIndex] = Field(
-        default=BruteForceIndex(),
+        default=None,
         description="In-memory vector index for this Library"
     )
     # created_at: datetime = Field(
@@ -91,29 +91,6 @@ class Library(BaseModel):
     def get_all_chunks(self) -> Tuple[Chunk, ...]:
         """Get all chunks in this Library as immutable tuples."""
         return tuple(self.chunks)
-    
-    
-        
-    # TODO: use delete_chunks and pass an array with a single ID
-    # def _remove_chunk(self, chunk_id: UUID) -> None:
-    #     """
-    #     Remove the given Chunk from whichever Document it lives in.
-    #     """
-    #     for d in self.documents:
-    #         try:
-    #             d.remove_chunk(chunk_id)
-    #             return
-    #         except KeyError:
-    #             continue
-    #     raise KeyError(f"No chunk with id={chunk_id} in any document")
-
-    # def _delete_all_chunks(self) -> None:
-    #     """
-    #     Remove all Chunks from all Documents in this Library.
-    #     """
-    #     for document in self.documents:
-    #         document.chunks.clear()
-    #     self.index = None
 
     def build_index(self, index: BaseIndex) -> None:
         """
@@ -143,8 +120,6 @@ class Library(BaseModel):
             "id": str(self.id),
             "name": self.name,
             "metadata": self.metadata,
-            # "created_at": self.created_at.isoformat(),
-            # "documents": [d.to_dict() for d in self.documents],
         }
 
     @property
