@@ -1,2 +1,4 @@
 **/__pycache__/**
 .env
+# pickle files saved to disk
+*.pkl

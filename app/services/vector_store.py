@@ -18,9 +18,9 @@ class VectorStore:
     """
     A simple in-memory vector store that manages multiple `Libraries` and exposes a CRUD API to interact with them.
     """
-    SNAPSHOT_PATH = '/app/vectorstore_data/vectorstore_snapshot.pkl'
+    SNAPSHOT_PATH = os.getenv('SNAPSHOT_PATH') or './vectorstore_snapshot.pkl'
     SNAPSHOT_INTERVAL = 10  # seconds
-
+    
     def __init__(self, index_factory=BruteForceIndex):
         self._libraries: Dict[UUID, Library] = {}
         self._index_factory = index_factory

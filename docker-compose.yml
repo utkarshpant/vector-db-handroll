@@ -6,6 +6,8 @@ services:
       - "8000:8000"
     volumes:
       - vectorstore_data:/app/vectorstore_data
+    environment:
+      - SNAPSHOT_PATH=/app/vectorstore_data/vectorstore_snapshot.pkl
 
 volumes:
   vectorstore_data:
