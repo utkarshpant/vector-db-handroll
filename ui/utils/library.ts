@@ -1,12 +1,12 @@
 export type Library = {
     id: string;
     name: string;
-    metadata: { [key: string]: string };
+    metadata: { [key: string]: string } & { created_at: string; };
     chunks: Array<Chunk>;
-    created_at: string;
+    index_name: string;
 }
 
-export type LibraryListItem = Pick<Library, 'id' | 'name'>;
+export type LibraryListItem = Pick<Library, 'id' | 'name' | 'metadata' | 'index_name'>;
 
 export type Chunk = {
     id: string;

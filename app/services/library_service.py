@@ -30,9 +30,10 @@ def get_library_by_id_service(lib_id: str):
             id=library.id,
             name=library.name,
             metadata=library.metadata,
-            created_at=library.created_at,
-            total_chunks=len(library.chunks)
-        )
+            created_at=library.metadata['created_at'],
+            total_chunks=len(library.chunks),
+            index_name=library.index_name
+        )                   
         return LibraryResponse.model_validate(library)
     finally:
         rw_lock.release_read()
@@ -47,7 +48,7 @@ def create_library_service(libraryData: LibraryCreate):
             id=library.id,
             name=library.name,
             metadata=library.metadata,
-            created_at=library.created_at,
+            created_at=library.metadata['created_at'],
             total_chunks=len(library.chunks)
         )
         return LibraryResponse.model_validate(library)

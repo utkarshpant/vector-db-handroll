@@ -9,6 +9,21 @@ const router = createBrowserRouter([
     path: '/',
     Component: App,
     loader: rootLoader,
+  },
+  {
+    path: '/library/:libraryId',
+    action: async ({ request, params }) => {
+      if (request.method === "DELETE") {
+        const response = await fetch(`http://localhost:8000/library/${params.libraryId}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) {
+          throw new Error('Failed to delete library');
+        }
+        return null; // Redirect or handle success as needed
+      }
+      throw new Error('Invalid request method');
+    }
   }
 ], {
   basename: '/ui',

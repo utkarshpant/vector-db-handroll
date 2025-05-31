@@ -12,9 +12,10 @@ class LibraryListItem(BaseModel):
     """
     id: UUID = Field(default_factory=uuid4, description="Unique identifier for the Library")
     name: str = Field(..., description="Name of the Library")
-    # metadata: dict[str, Any] = Field(default_factory=dict, description="Metadata associated with the Library")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Metadata associated with the Library")
+    index_name: str = Field(..., description="The index type of this library")
     # created_at: datetime = Field(..., description="UTC timestamp when the library was created")
-    
+
     class Config:
         from_attributes = True
         arbitrary_types_allowed = True
@@ -37,8 +38,10 @@ class LibraryResponse(BaseModel):
     id: UUID = Field(default_factory=uuid4, description="Unique identifier for the Library")
     name: str = Field(..., description="Name of the Library")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Metadata associated with the Library")
-    created_at: datetime = Field(..., description="UTC timestamp when the library was created")
     total_chunks: int = Field(..., description="Total number of chunks in the Library")
+    index_name: Optional[str] = Field(
+        None, description="Name of the index used for this Library, if applicable"
+    )
     
     class Config:
         from_attributes = True
