@@ -143,6 +143,10 @@ class VectorStore:
                         'chunk_lookup': self._chunk_lookup
                     }))
                 os.replace(self.SNAPSHOT_PATH + '.tmp', self.SNAPSHOT_PATH)
+        except Exception as e:
+            # Log the error, but do not crash the background task
+            print(f"Something went wrong trying to save the snapshot: {e}")
+
         finally:
             for lock in self._library_locks.values():
                 lock.release_write()
@@ -161,6 +165,8 @@ class VectorStore:
                         data = pickle.loads(file_content)
                         self._libraries = data.get('libraries', {})
                         self._chunk_lookup = data.get('chunk_lookup', {})
+        except Exception as e:
+            print("Something went wrong trying to load the snapshot", e)
         finally:
             for lock in self._library_locks.values():
                 lock.release_write()
@@ -169,6 +175,10 @@ class VectorStore:
     def _start_snapshot_thread(self):
         async def snapshot_loop():
             while True:
-                await asyncio.sleep(self.SNAPSHOT_INTERVAL)
-                await self.save_to_disk_async()
+                try:
+                    await asyncio.sleep(self.SNAPSHOT_INTERVAL)
+                    await self.save_to_disk_async()
+                except Exception as e:
+                    # Log the error, but do not crash the background task
+                    print(f"Something wentt wrong trying to start the snapshot task: {e}")
         asyncio.create_task(snapshot_loop())

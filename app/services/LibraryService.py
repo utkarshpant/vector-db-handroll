@@ -20,18 +20,22 @@ async def get_library_lock(lib_id: str):
     return vector_store.get_library_lock(UUID(lib_id))
 
 async def list_libraries_service():
-    rw_lock.acquire_read()
     try:
+        rw_lock.acquire_read()
         vector_store = await get_vector_store()
         libraries = vector_store.get_all_libraries()
         return [LibraryListItem.model_validate(lib) for lib in libraries]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     finally:
         rw_lock.release_read()
 
 async def get_library_by_id_service(lib_id: str):
+    if not lib_id:
+        raise HTTPException(status_code=400, detail="Library ID must be provided.")
     lock = await get_library_lock(lib_id)
-    lock.acquire_read()
     try:
+        lock.acquire_read()
         vector_store = await get_vector_store()
         if not vector_store.has_library(UUID(lib_id)):
             raise HTTPException(status_code=404, detail="Library not found")
@@ -42,12 +46,18 @@ async def get_library_by_id_service(lib_id: str):
             metadata=library.metadata,
             total_chunks=len(library.chunks),
             index_name=library.index_name
-        )                   
+        )
         return LibraryResponse.model_validate(library)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     finally:
         lock.release_read()
 
 async def create_library_service(libraryData: LibraryCreate):
+    if not libraryData or not libraryData.name:
+        raise HTTPException(status_code=422, detail="Library name is required.")
     rw_lock.acquire_write()
     try:
         vector_store = await get_vector_store()
@@ -63,21 +73,31 @@ async def create_library_service(libraryData: LibraryCreate):
             index_name=library.index_name
         )
         return LibraryResponse.model_validate(library)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     finally:
         rw_lock.release_write()
 
 async def delete_library_service(lib_id: str):
+    if not lib_id:
+        raise HTTPException(status_code=400, detail="Library ID must be provided.")
     rw_lock.acquire_write()
     try:
         vector_store = await get_vector_store()
-        if (not vector_store.has_library(UUID(lib_id))):
+        if not vector_store.has_library(UUID(lib_id)):
             raise HTTPException(status_code=404, detail="Library not found")
         vector_store.delete_library(UUID(lib_id))
         return {"status": "ok"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     finally:
         rw_lock.release_write()
 
 async def library_exists_service(lib_id: str):
+    if not lib_id:
+        raise HTTPException(status_code=400, detail="Library ID must be provided.")
     rw_lock.acquire_read()
     try:
         vector_store = await get_vector_store()
@@ -86,45 +106,62 @@ async def library_exists_service(lib_id: str):
             return {"exists": True}
         except KeyError:
             return {"exists": False}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     finally:
         rw_lock.release_read()
 
 async def get_chunks_by_library_service(lib_id: str):
-    rw_lock.acquire_read()
+    if not lib_id:
+        raise HTTPException(status_code=400, detail="Library ID must be provided.")
+    lock = await get_library_lock(lib_id)
     try:
+        lock.acquire_read()
         vector_store = await get_vector_store()
         if not vector_store.has_library(UUID(lib_id)):
             raise HTTPException(status_code=404, detail="Library not found")
         library = vector_store.get_library(UUID(lib_id))
         chunks = [chunk.model_dump() for chunk in library.get_all_chunks()]
         return chunks
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     finally:
-        rw_lock.release_read()
+        lock.release_read()
 
 async def upsert_chunks_service(upsertChunksDto: UpsertChunksDto, lib_id: str):
+    if not lib_id or not upsertChunksDto or not upsertChunksDto.chunks:
+        raise HTTPException(status_code=422, detail="Library ID and chunks are required.")
     lock = await get_library_lock(lib_id)
-    lock.acquire_write()
     try:
+        lock.acquire_write()
         vector_store = await get_vector_store()
         if not vector_store.has_library(UUID(lib_id)):
             raise HTTPException(status_code=404, detail="Library not found")
         hydrated_chunks = [
             Chunk.model_validate(obj=chunk) for chunk in upsertChunksDto.chunks
         ]
-        if (upsertChunksDto.filters):
+        if upsertChunksDto.filters:
             filters = Filter(root=upsertChunksDto.filters)
             hydrated_chunks = [
                 chunk for chunk in hydrated_chunks if passes_filter(chunk.metadata, filters)
             ]
         vector_store.upsert_chunks(UUID(lib_id), hydrated_chunks)
         return [chunk.model_dump() for chunk in hydrated_chunks]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     finally:
         lock.release_write()
 
 async def delete_chunks_by_library_service(deleteChunksDto: DeleteChunksDto, lib_id: str):
+    if not lib_id:
+        raise HTTPException(status_code=400, detail="Library ID must be provided.")
     lock = await get_library_lock(lib_id)
-    lock.acquire_write()
     try:
+        lock.acquire_write()
         vector_store = await get_vector_store()
         if not vector_store.has_library(UUID(lib_id)):
             raise HTTPException(status_code=404, detail="Library not found")
@@ -141,25 +178,39 @@ async def delete_chunks_by_library_service(deleteChunksDto: DeleteChunksDto, lib
         if chunk_ids_to_delete:
             library.delete_chunks(chunk_ids_to_delete)
         return {"deleted": len(chunk_ids_to_delete)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     finally:
         lock.release_write()
 
 async def count_chunks_by_library_service(lib_id: str):
-    rw_lock.acquire_read()
+    if not lib_id:
+        raise HTTPException(status_code=400, detail="Library ID must be provided.")
+    lock = await get_library_lock(lib_id)
     try:
+        lock.acquire_read()
         vector_store = await get_vector_store()
         if not vector_store.has_library(UUID(lib_id)):
             raise HTTPException(status_code=404, detail="Library not found")
         library = vector_store.get_library(UUID(lib_id))
         return {"count": len(library.get_all_chunks())}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     finally:
-        rw_lock.release_read()
+        lock.release_read()
 
 async def search_chunks_by_library_service(lib_id: str, queryDto: QueryDto, k: int = 5):
-    rw_lock.acquire_read()
+    if not lib_id or not queryDto or not queryDto.query:
+        raise HTTPException(status_code=422, detail="Library ID and query are required.")
+    lock = await get_library_lock(lib_id)
     try:
+        lock.acquire_read()
         vector_store = await get_vector_store()
-        if (len(queryDto.query) != EMBEDDING_DIM):
+        if len(queryDto.query) != EMBEDDING_DIM:
             raise HTTPException(
                 status_code=400, detail=f"Query vector must be of length {EMBEDDING_DIM}")
         if not vector_store.has_library(UUID(lib_id)):
@@ -175,5 +226,9 @@ async def search_chunks_by_library_service(lib_id: str, queryDto: QueryDto, k: i
             if passes_filter(chunk.metadata, filters)
         ]
         return results
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
     finally:
-        rw_lock.release_read()
+        lock.release_read()

@@ -14,9 +14,14 @@ client = TestClient(app)
 
 
 @pytest.fixture
-def mock_vector_store():
-    with patch('app.services.LibraryService.vector_store') as mock:
-        yield mock
+def mock_vector_store(monkeypatch):
+    # Patch the get_vector_store async function to return a MagicMock
+    from app.services import LibraryService
+    mock = MagicMock()
+    async def fake_get_vector_store():
+        return mock
+    monkeypatch.setattr(LibraryService, "get_vector_store", fake_get_vector_store)
+    return mock
 
 
 @pytest.fixture
