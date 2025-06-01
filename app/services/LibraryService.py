@@ -9,23 +9,25 @@ from app.services.VectorStore import VectorStore
 from app.api.dto.Library import DeleteChunksDto, LibraryListItem, LibraryCreate, LibraryResponse, QueryDto, UpsertChunksDto
 from app.utils.filters import passes_filter
 from app.utils.read_write_lock import ReadWriteLock
-
 # use this vector store to save everything in
 rw_lock = ReadWriteLock()
 
-vector_store = VectorStore()
+async def get_vector_store():
+    return await VectorStore.get_instance()
 
-def list_libraries_service():
+async def list_libraries_service():
     rw_lock.acquire_read()
     try:
+        vector_store = await get_vector_store()
         libraries = vector_store.get_all_libraries()
         return [LibraryListItem.model_validate(lib) for lib in libraries]
     finally:
         rw_lock.release_read()
 
-def get_library_by_id_service(lib_id: str):
+async def get_library_by_id_service(lib_id: str):
     rw_lock.acquire_read()
     try:
+        vector_store = await get_vector_store()
         if not vector_store.has_library(UUID(lib_id)):
             raise HTTPException(status_code=404, detail="Library not found")
         library = vector_store.get_library(UUID(lib_id))
@@ -40,9 +42,10 @@ def get_library_by_id_service(lib_id: str):
     finally:
         rw_lock.release_read()
 
-def create_library_service(libraryData: LibraryCreate):
+async def create_library_service(libraryData: LibraryCreate):
     rw_lock.acquire_write()
     try:
+        vector_store = await get_vector_store()
         index_instance = BallTreeIndex() if libraryData.index_name == 'BallTreeIndex' else BruteForceIndex()
         lib_id = vector_store.create_library(
             libraryData.name, index=index_instance, metadata=libraryData.metadata)
@@ -58,9 +61,10 @@ def create_library_service(libraryData: LibraryCreate):
     finally:
         rw_lock.release_write()
 
-def delete_library_service(lib_id: str):
+async def delete_library_service(lib_id: str):
     rw_lock.acquire_write()
     try:
+        vector_store = await get_vector_store()
         if (not vector_store.has_library(UUID(lib_id))):
             raise HTTPException(status_code=404, detail="Library not found")
         vector_store.delete_library(UUID(lib_id))
@@ -68,9 +72,10 @@ def delete_library_service(lib_id: str):
     finally:
         rw_lock.release_write()
 
-def library_exists_service(lib_id: str):
+async def library_exists_service(lib_id: str):
     rw_lock.acquire_read()
     try:
+        vector_store = await get_vector_store()
         try:
             vector_store.get_library(UUID(lib_id))
             return {"exists": True}
@@ -79,9 +84,10 @@ def library_exists_service(lib_id: str):
     finally:
         rw_lock.release_read()
 
-def get_chunks_by_library_service(lib_id: str):
+async def get_chunks_by_library_service(lib_id: str):
     rw_lock.acquire_read()
     try:
+        vector_store = await get_vector_store()
         if not vector_store.has_library(UUID(lib_id)):
             raise HTTPException(status_code=404, detail="Library not found")
         library = vector_store.get_library(UUID(lib_id))
@@ -90,9 +96,10 @@ def get_chunks_by_library_service(lib_id: str):
     finally:
         rw_lock.release_read()
 
-def upsert_chunks_service(upsertChunksDto: UpsertChunksDto, lib_id: str):
+async def upsert_chunks_service(upsertChunksDto: UpsertChunksDto, lib_id: str):
     rw_lock.acquire_write()
     try:
+        vector_store = await get_vector_store()
         if not vector_store.has_library(UUID(lib_id)):
             raise HTTPException(status_code=404, detail="Library not found")
         hydrated_chunks = [
@@ -108,9 +115,10 @@ def upsert_chunks_service(upsertChunksDto: UpsertChunksDto, lib_id: str):
     finally:
         rw_lock.release_write()
 
-def delete_chunks_by_library_service(deleteChunksDto: DeleteChunksDto, lib_id: str):
+async def delete_chunks_by_library_service(deleteChunksDto: DeleteChunksDto, lib_id: str):
     rw_lock.acquire_write()
     try:
+        vector_store = await get_vector_store()
         if not vector_store.has_library(UUID(lib_id)):
             raise HTTPException(status_code=404, detail="Library not found")
         library = vector_store.get_library(UUID(lib_id))
@@ -129,9 +137,10 @@ def delete_chunks_by_library_service(deleteChunksDto: DeleteChunksDto, lib_id: s
     finally:
         rw_lock.release_write()
 
-def count_chunks_by_library_service(lib_id: str):
+async def count_chunks_by_library_service(lib_id: str):
     rw_lock.acquire_read()
     try:
+        vector_store = await get_vector_store()
         if not vector_store.has_library(UUID(lib_id)):
             raise HTTPException(status_code=404, detail="Library not found")
         library = vector_store.get_library(UUID(lib_id))
@@ -139,9 +148,10 @@ def count_chunks_by_library_service(lib_id: str):
     finally:
         rw_lock.release_read()
 
-def search_chunks_by_library_service(lib_id: str, queryDto: QueryDto, k: int = 5):
+async def search_chunks_by_library_service(lib_id: str, queryDto: QueryDto, k: int = 5):
     rw_lock.acquire_read()
     try:
+        vector_store = await get_vector_store()
         if (len(queryDto.query) != EMBEDDING_DIM):
             raise HTTPException(
                 status_code=400, detail=f"Query vector must be of length {EMBEDDING_DIM}")

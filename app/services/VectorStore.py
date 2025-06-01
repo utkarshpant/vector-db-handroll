@@ -3,7 +3,6 @@ from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
 import numpy as np
-import threading
 import pickle
 import aiofiles
 import asyncio
@@ -24,6 +23,9 @@ class VectorStore:
     SNAPSHOT_PATH = os.getenv('SNAPSHOT_PATH') or './vectorstore_snapshot.pkl'
     SNAPSHOT_INTERVAL = 10  # seconds
 
+    _instance = None
+    _instance_lock = asyncio.Lock()
+
     def __init__(self, index_factory=BruteForceIndex):
         self._libraries: Dict[UUID, Library] = {}
         self._index_factory = index_factory
@@ -37,6 +39,14 @@ class VectorStore:
         await store.load_from_disk_async()
         store._start_snapshot_thread()
         return store
+
+    @classmethod
+    async def get_instance(cls, index_factory=BruteForceIndex):
+        if cls._instance is None:
+            async with cls._instance_lock:
+                if cls._instance is None:
+                    cls._instance = await cls.create(index_factory)
+        return cls._instance
 
     def create_library(self, name: str, index: BallTreeIndex | BruteForceIndex = BruteForceIndex(), metadata: dict | None = None) -> UUID:
         lib = Library(name=name, metadata=metadata or {})
@@ -123,7 +133,8 @@ class VectorStore:
         if os.path.exists(self.SNAPSHOT_PATH):
             async with self._snapshot_lock:
                 async with aiofiles.open(self.SNAPSHOT_PATH, 'rb') as f:
-                    data = pickle.loads(f)
+                    file_content = await f.read()
+                    data = pickle.loads(file_content)
                     self._libraries = data.get('libraries', {})
                     self._chunk_lookup = data.get('chunk_lookup', {})
 
