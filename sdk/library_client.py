@@ -33,16 +33,19 @@ class LibraryClient:
         resp.raise_for_status()
         return resp.json()
 
-    def create_library(self, name: str, metadata: Optional[dict] = None) -> Dict[str, Any]:
+    def create_library(self, name: str, metadata: Optional[dict] = None, index_name: Optional[str] = None) -> Dict[str, Any]:
         """
         Create a new library.
         :param name: Name of the library
         :param metadata: Optional metadata dict
+        :param index_name: Optional index name (e.g., 'BruteForceIndex', 'BallTreeIndex')
         :return: Created library info
         """
         data = {"name": name}
         if metadata:
             data["metadata"] = metadata
+        if index_name:
+            data["index_name"] = index_name
         resp = requests.post(f"{self.base_url}/library", json=data)
         resp.raise_for_status()
         return resp.json()
@@ -55,14 +58,17 @@ class LibraryClient:
         resp = requests.delete(f"{self.base_url}/library/{library_id}")
         resp.raise_for_status()
 
-    def upsert_chunks(self, library_id: str, chunks: List[dict]) -> Dict[str, Any]:
+    def upsert_chunks(self, library_id: str, chunks: List[dict], filters: Optional[dict] = None) -> Dict[str, Any]:
         """
-        Upsert (insert or update) chunks in a library.
+        Upsert (insert or update) chunks in a library, with optional filters.
         :param library_id: Library UUID
         :param chunks: List of chunk dicts
+        :param filters: Optional filters dict
         :return: API response dict
         """
         data = {"chunks": chunks}
+        if filters:
+            data["filters"] = filters
         resp = requests.put(f"{self.base_url}/library/{library_id}/chunks", json=data)
         resp.raise_for_status()
         return resp.json()
@@ -87,15 +93,18 @@ class LibraryClient:
         resp.raise_for_status()
         return resp.json().get("count", 0)
 
-    def search(self, library_id: str, query_vector: List[float], k: int = 5) -> List[Tuple[str, float]]:
+    def search(self, library_id: str, query_vector: List[float], k: int = 5, filters: Optional[dict] = None) -> List[Tuple[str, float]]:
         """
-        Search the vector index for the top-k most similar chunks.
+        Search the vector index for the top-k most similar chunks, with optional filters.
         :param library_id: Library UUID
         :param query_vector: List of floats (embedding)
         :param k: Number of results to return
+        :param filters: Optional filters dict
         :return: List of (chunk_id, similarity) tuples
         """
         data = {"query": query_vector}
+        if filters:
+            data["filters"] = filters
         resp = requests.post(f"{self.base_url}/library/{library_id}/search?k={k}", json=data)
         resp.raise_for_status()
         return resp.json()

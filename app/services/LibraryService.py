@@ -61,7 +61,15 @@ async def create_library_service(libraryData: LibraryCreate):
     rw_lock.acquire_write()
     try:
         vector_store = await get_vector_store()
-        index_instance = BallTreeIndex() if libraryData.index_name == 'BallTreeIndex' else BruteForceIndex()
+        # Use the index_name if provided, else default
+        index_instance = None
+        if hasattr(libraryData, 'index_name') and libraryData.index_name:
+            if libraryData.index_name == 'BallTreeIndex':
+                index_instance = BallTreeIndex()
+            else:
+                index_instance = BruteForceIndex()
+        else:
+            index_instance = BruteForceIndex()
         lib_id = vector_store.create_library(
             libraryData.name, index=index_instance, metadata=libraryData.metadata)
         library = vector_store.get_library(lib_id)
@@ -142,10 +150,11 @@ async def upsert_chunks_service(upsertChunksDto: UpsertChunksDto, lib_id: str):
         hydrated_chunks = [
             Chunk.model_validate(obj=chunk) for chunk in upsertChunksDto.chunks
         ]
-        if upsertChunksDto.filters:
-            filters = Filter(root=upsertChunksDto.filters)
+        filters = getattr(upsertChunksDto, 'filters', None)
+        if filters:
+            filter_obj = Filter(root=filters)
             hydrated_chunks = [
-                chunk for chunk in hydrated_chunks if passes_filter(chunk.metadata, filters)
+                chunk for chunk in hydrated_chunks if passes_filter(chunk.metadata, filter_obj)
             ]
         vector_store.upsert_chunks(UUID(lib_id), hydrated_chunks)
         return [chunk.model_dump() for chunk in hydrated_chunks]
@@ -215,15 +224,19 @@ async def search_chunks_by_library_service(lib_id: str, queryDto: QueryDto, k: i
                 status_code=400, detail=f"Query vector must be of length {EMBEDDING_DIM}")
         if not vector_store.has_library(UUID(lib_id)):
             raise HTTPException(status_code=404, detail="Library not found")
+        filters = getattr(queryDto, 'filters', None)
+        data = {"query": queryDto.query}
+        if filters:
+            data["filters"] = filters
         results = vector_store.search(
             UUID(lib_id), queryDto.query, k=k
         )
-        if not queryDto.filters:
+        if not filters:
             return results
-        filters = Filter(root=queryDto.filters)
+        filter_obj = Filter(root=filters)
         results = [
             (chunk, score) for chunk, score in results
-            if passes_filter(chunk.metadata, filters)
+            if passes_filter(chunk.metadata, filter_obj)
         ]
         return results
     except HTTPException:
