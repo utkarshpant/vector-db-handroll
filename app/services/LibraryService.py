@@ -15,6 +15,10 @@ rw_lock = ReadWriteLock()
 async def get_vector_store():
     return await VectorStore.get_instance()
 
+async def get_library_lock(lib_id: str):
+    vector_store = await get_vector_store()
+    return vector_store.get_library_lock(UUID(lib_id))
+
 async def list_libraries_service():
     rw_lock.acquire_read()
     try:
@@ -25,7 +29,8 @@ async def list_libraries_service():
         rw_lock.release_read()
 
 async def get_library_by_id_service(lib_id: str):
-    rw_lock.acquire_read()
+    lock = await get_library_lock(lib_id)
+    lock.acquire_read()
     try:
         vector_store = await get_vector_store()
         if not vector_store.has_library(UUID(lib_id)):
@@ -40,7 +45,7 @@ async def get_library_by_id_service(lib_id: str):
         )                   
         return LibraryResponse.model_validate(library)
     finally:
-        rw_lock.release_read()
+        lock.release_read()
 
 async def create_library_service(libraryData: LibraryCreate):
     rw_lock.acquire_write()
@@ -97,7 +102,8 @@ async def get_chunks_by_library_service(lib_id: str):
         rw_lock.release_read()
 
 async def upsert_chunks_service(upsertChunksDto: UpsertChunksDto, lib_id: str):
-    rw_lock.acquire_write()
+    lock = await get_library_lock(lib_id)
+    lock.acquire_write()
     try:
         vector_store = await get_vector_store()
         if not vector_store.has_library(UUID(lib_id)):
@@ -113,10 +119,11 @@ async def upsert_chunks_service(upsertChunksDto: UpsertChunksDto, lib_id: str):
         vector_store.upsert_chunks(UUID(lib_id), hydrated_chunks)
         return [chunk.model_dump() for chunk in hydrated_chunks]
     finally:
-        rw_lock.release_write()
+        lock.release_write()
 
 async def delete_chunks_by_library_service(deleteChunksDto: DeleteChunksDto, lib_id: str):
-    rw_lock.acquire_write()
+    lock = await get_library_lock(lib_id)
+    lock.acquire_write()
     try:
         vector_store = await get_vector_store()
         if not vector_store.has_library(UUID(lib_id)):
@@ -135,7 +142,7 @@ async def delete_chunks_by_library_service(deleteChunksDto: DeleteChunksDto, lib
             library.delete_chunks(chunk_ids_to_delete)
         return {"deleted": len(chunk_ids_to_delete)}
     finally:
-        rw_lock.release_write()
+        lock.release_write()
 
 async def count_chunks_by_library_service(lib_id: str):
     rw_lock.acquire_read()

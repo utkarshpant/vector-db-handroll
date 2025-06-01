@@ -14,7 +14,6 @@ A modular, Pythonic vector database for RAG and NLP tasks, built with FastAPI an
 - [Docker & Running Locally](#docker--running-locally)
 - [Python Client](#python-client)
 - [Web UI](#web-ui)
-- [Evaluation Criteria Mapping](#evaluation-criteria-mapping)
 
 ## Installation
 
@@ -92,9 +91,10 @@ A modular, Pythonic vector database for RAG and NLP tasks, built with FastAPI an
 
 
 ## Concurrency & Data Races
-- Custom `ReadWriteLock` ensures thread/process safety.
+- Custom `ReadWriteLock` ensures safe data access/mutations.
 - Multiple readers, single writer model.
-- All service functions acquire the appropriate lock before accessing the vector store.
+- All service functions acquire the appropriate, __library-level lock__ before accessing/mutating data.
+- A _global_ lock on the _entire_ store is used __only when saving/loading snapshots to/from disk.__
 
 ## API & Service Layer
 - All CRUD and query logic is implemented in the `services/LibraryService.py` service layer.
@@ -115,8 +115,6 @@ A modular, Pythonic vector database for RAG and NLP tasks, built with FastAPI an
 ## Python Client
 - Minimal client in `sdk/` for sync operations
 - Example usage in `demo.py`
-
----
 
 ## Web UI
 - Basic React UI for visualizing libraries and chunks

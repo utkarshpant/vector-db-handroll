@@ -14,6 +14,7 @@ from app.core.Library import Library
 from app.indexes.BallTreeIndex import BallTreeIndex
 from app.indexes.BaseIndex import BaseIndex
 from app.indexes.BruteForceIndex import BruteForceIndex
+from app.utils.read_write_lock import ReadWriteLock
 
 
 class VectorStore:
@@ -32,7 +33,9 @@ class VectorStore:
         # per-library helper: id -> Chunk (populated when index is (re)built)
         self._chunk_lookup: Dict[UUID, Dict[UUID, Chunk]] = {}
         self._snapshot_lock = asyncio.Lock()
-    
+        self._library_locks: Dict[UUID, ReadWriteLock] = {}  # Per-library locks
+        self._global_lock = ReadWriteLock()  # For global operations
+
     @classmethod
     async def create(cls, index_factory=BruteForceIndex):
         store = cls(index_factory)
@@ -48,10 +51,16 @@ class VectorStore:
                     cls._instance = await cls.create(index_factory)
         return cls._instance
 
+    def get_library_lock(self, lib_id: UUID) -> ReadWriteLock:
+        if lib_id not in self._library_locks:
+            self._library_locks[lib_id] = ReadWriteLock()
+        return self._library_locks[lib_id]
+
     def create_library(self, name: str, index: BallTreeIndex | BruteForceIndex = BruteForceIndex(), metadata: dict | None = None) -> UUID:
         lib = Library(name=name, metadata=metadata or {})
         lib.build_index(index)
         self._libraries[lib.id] = lib
+        self._library_locks[lib.id] = ReadWriteLock()  # Add lock for new library
         return lib.id
 
     def get_library(self, lib_id: UUID) -> Library:
@@ -81,6 +90,7 @@ class VectorStore:
             raise KeyError(f"Library with ID {lib_id} does not exist.")
         self._libraries.pop(lib_id)
         self._chunk_lookup.pop(lib_id, None)
+        self._library_locks.pop(lib_id, None)  # Remove lock for deleted library
 
     def get_all_libraries(self) -> Tuple[Library, ...]:
         """
@@ -121,22 +131,40 @@ class VectorStore:
         return [(lookup[cid], score) for cid, score in hits]
 
     async def save_to_disk_async(self):
-        async with self._snapshot_lock:
-            async with aiofiles.open(self.SNAPSHOT_PATH + '.tmp', 'wb') as f:
-                await f.write(pickle.dumps({
-                    'libraries': self._libraries,
-                    'chunk_lookup': self._chunk_lookup
-                }))
-            os.replace(self.SNAPSHOT_PATH + '.tmp', self.SNAPSHOT_PATH)
+        # Lock all library locks and the global lock before saving
+        self._global_lock.acquire_write()
+        for lock in self._library_locks.values():
+            lock.acquire_write()
+        try:
+            async with self._snapshot_lock:
+                async with aiofiles.open(self.SNAPSHOT_PATH + '.tmp', 'wb') as f:
+                    await f.write(pickle.dumps({
+                        'libraries': self._libraries,
+                        'chunk_lookup': self._chunk_lookup
+                    }))
+                os.replace(self.SNAPSHOT_PATH + '.tmp', self.SNAPSHOT_PATH)
+        finally:
+            for lock in self._library_locks.values():
+                lock.release_write()
+            self._global_lock.release_write()
 
     async def load_from_disk_async(self):
-        if os.path.exists(self.SNAPSHOT_PATH):
-            async with self._snapshot_lock:
-                async with aiofiles.open(self.SNAPSHOT_PATH, 'rb') as f:
-                    file_content = await f.read()
-                    data = pickle.loads(file_content)
-                    self._libraries = data.get('libraries', {})
-                    self._chunk_lookup = data.get('chunk_lookup', {})
+        # Lock all library locks and the global lock before loading
+        self._global_lock.acquire_write()
+        for lock in self._library_locks.values():
+            lock.acquire_write()
+        try:
+            if os.path.exists(self.SNAPSHOT_PATH):
+                async with self._snapshot_lock:
+                    async with aiofiles.open(self.SNAPSHOT_PATH, 'rb') as f:
+                        file_content = await f.read()
+                        data = pickle.loads(file_content)
+                        self._libraries = data.get('libraries', {})
+                        self._chunk_lookup = data.get('chunk_lookup', {})
+        finally:
+            for lock in self._library_locks.values():
+                lock.release_write()
+            self._global_lock.release_write()
 
     def _start_snapshot_thread(self):
         async def snapshot_loop():
