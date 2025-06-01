@@ -66,6 +66,8 @@ A modular, Pythonic vector database for RAG and NLP tasks, built with FastAPI an
 ### Library
 - Collection of embeddings (chunks)
 - Has a unique ID, name, metadata, and an index
+- Has a 1:many, compositional relationship with Chunks - one Library _has_ an array of multiple Chunks.
+- Has a compositional relationship with Indexes. Each Library maintains one Index for its Chunks.
 
 ### Chunk
 - Embedding + metadata pair
@@ -76,6 +78,8 @@ A modular, Pythonic vector database for RAG and NLP tasks, built with FastAPI an
 - I believe this was a good design choice seeing that my reference database, Qdrant, also implements only `Collections (Libraries)` and `Points (Chunks)`!
 
 ## Indexing Algorithms
+
+Indexes are implemented using inhertance. A `BaseIndex` abstract base class defined the `build` and `search` methods that different subclasses implement. For example, the BruteForceIndex implements traditional KNN indexing, while BallTreeIndex implements a tree data structure that is constructed and rebalanced using `build`.
 
 ### Brute-force KNN
 - Simple linear search over all embeddings
@@ -89,6 +93,11 @@ A modular, Pythonic vector database for RAG and NLP tasks, built with FastAPI an
 - Space Complexity: O(n * d)
 - Chosen for relatively improved performance on larger datasets
 
+### Other algorithms considered
+
+## k-D Trees
+- I considered k-D trees but decided not to implement them due to the fact that the high dimensionality of our embeddings would cause degraded search and building performance. Ball Trees seemed like a slightly better choice owing to their "radius-based" assignment of tree nodes.
+- I also considered HNSW indexes, but due to the complexity and limited time for implementation, decided against them for the time being.
 
 ## Concurrency & Data Races
 - Custom `ReadWriteLock` ensures safe data access/mutations.
