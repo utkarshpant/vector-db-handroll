@@ -4,7 +4,7 @@ import pytest
 from uuid import UUID
 from typing import Callable, List
 
-from app.services.vector_store import VectorStore
+from app.services.VectorStore import VectorStore
 from app.indexes.BruteForceIndex import BruteForceIndex
 from app.indexes.BallTreeIndex import BallTreeIndex
 from app.core.Chunk import Chunk

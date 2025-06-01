@@ -15,7 +15,7 @@ client = TestClient(app)
 
 @pytest.fixture
 def mock_vector_store():
-    with patch('app.services.library_service.vector_store') as mock:
+    with patch('app.services.LibraryService.vector_store') as mock:
         yield mock
 
 
@@ -59,7 +59,6 @@ def sample_library_with_chunks(sample_library_id):
         id=UUID(sample_library_id),
         name="Test Library with Documents",
         metadata={"description": "Test library with documents"},
-        created_at=datetime.now(),
         chunks=chunks
     )
 

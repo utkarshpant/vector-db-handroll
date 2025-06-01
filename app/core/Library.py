@@ -39,7 +39,7 @@ class Library(BaseModel):
         description="Ordered list of Chunks belonging to this Library"
     )
     index: Optional[BaseIndex | BruteForceIndex | BallTreeIndex] = Field(
-        default=None,
+        default=BallTreeIndex(),
         description="In-memory vector index for this Library"
     )
     # created_at: datetime = Field(

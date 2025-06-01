@@ -9,7 +9,7 @@ class BruteForceIndex(BaseIndex):
     A super simple KNN index: store every vector and scan all at query timr.
     """
 
-    name = "Brute-force Index"
+    name = "BruteForceIndex"
 
     def __init__(self, normalize: bool = True):
         self._vectors: np.ndarray | None = None

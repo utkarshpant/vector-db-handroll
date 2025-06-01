@@ -3,7 +3,7 @@ from typing import List
 from app.utils.openai import client
 from uuid import uuid4
 
-from app.services.vector_store import VectorStore
+from app.services.VectorStore import VectorStore
 from app.indexes.BallTreeIndex import BallTreeIndex
 from app.indexes.BruteForceIndex import BruteForceIndex
 from app.core.Chunk import Chunk

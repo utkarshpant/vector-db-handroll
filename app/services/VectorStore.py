@@ -5,11 +5,14 @@ from uuid import UUID
 import numpy as np
 import threading
 import pickle
+import aiofiles
+import asyncio
 import os
 
 from app.api.dto.Library import Chunk
 from app.core.Chunk import Chunk
 from app.core.Library import Library
+from app.indexes.BallTreeIndex import BallTreeIndex
 from app.indexes.BaseIndex import BaseIndex
 from app.indexes.BruteForceIndex import BruteForceIndex
 
@@ -20,18 +23,24 @@ class VectorStore:
     """
     SNAPSHOT_PATH = os.getenv('SNAPSHOT_PATH') or './vectorstore_snapshot.pkl'
     SNAPSHOT_INTERVAL = 10  # seconds
-    
+
     def __init__(self, index_factory=BruteForceIndex):
         self._libraries: Dict[UUID, Library] = {}
         self._index_factory = index_factory
         # per-library helper: id -> Chunk (populated when index is (re)built)
         self._chunk_lookup: Dict[UUID, Dict[UUID, Chunk]] = {}
-        self._snapshot_lock = threading.Lock()
-        self._start_snapshot_thread()
-        self.load_from_disk()
+        self._snapshot_lock = asyncio.Lock()
+    
+    @classmethod
+    async def create(cls, index_factory=BruteForceIndex):
+        store = cls(index_factory)
+        await store.load_from_disk_async()
+        store._start_snapshot_thread()
+        return store
 
-    def create_library(self, name: str, metadata: dict | None = None) -> UUID:
+    def create_library(self, name: str, index: BallTreeIndex | BruteForceIndex = BruteForceIndex(), metadata: dict | None = None) -> UUID:
         lib = Library(name=name, metadata=metadata or {})
+        lib.build_index(index)
         self._libraries[lib.id] = lib
         return lib.id
 
@@ -101,27 +110,26 @@ class VectorStore:
             raise RuntimeError("Index has not been built for this library")
         return [(lookup[cid], score) for cid, score in hits]
 
-    def save_to_disk(self):
-        with self._snapshot_lock:
-            with open(self.SNAPSHOT_PATH + '.tmp', 'wb') as f:
-                pickle.dump({
+    async def save_to_disk_async(self):
+        async with self._snapshot_lock:
+            async with aiofiles.open(self.SNAPSHOT_PATH + '.tmp', 'wb') as f:
+                await f.write(pickle.dumps({
                     'libraries': self._libraries,
                     'chunk_lookup': self._chunk_lookup
-                }, f)
+                }))
             os.replace(self.SNAPSHOT_PATH + '.tmp', self.SNAPSHOT_PATH)
 
-    def load_from_disk(self):
+    async def load_from_disk_async(self):
         if os.path.exists(self.SNAPSHOT_PATH):
-            with self._snapshot_lock:
-                with open(self.SNAPSHOT_PATH, 'rb') as f:
-                    data = pickle.load(f)
+            async with self._snapshot_lock:
+                async with aiofiles.open(self.SNAPSHOT_PATH, 'rb') as f:
+                    data = pickle.loads(f)
                     self._libraries = data.get('libraries', {})
                     self._chunk_lookup = data.get('chunk_lookup', {})
 
     def _start_snapshot_thread(self):
-        def snapshot_loop():
+        async def snapshot_loop():
             while True:
-                threading.Event().wait(self.SNAPSHOT_INTERVAL)
-                self.save_to_disk()
-        t = threading.Thread(target=snapshot_loop, daemon=True)
-        t.start()
+                await asyncio.sleep(self.SNAPSHOT_INTERVAL)
+                await self.save_to_disk_async()
+        asyncio.create_task(snapshot_loop())

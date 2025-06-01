@@ -3,14 +3,28 @@ from fastapi import HTTPException
 from app.core.Filter import Filter
 from app.core.Chunk import EMBEDDING_DIM, Chunk
 from app.core.Library import Library
-from app.services.vector_store import VectorStore
+from app.indexes.BallTreeIndex import BallTreeIndex
+from app.indexes.BruteForceIndex import BruteForceIndex
+from app.services.VectorStore import VectorStore
 from app.api.dto.Library import DeleteChunksDto, LibraryListItem, LibraryCreate, LibraryResponse, QueryDto, UpsertChunksDto
 from app.utils.filters import passes_filter
 from app.utils.read_write_lock import ReadWriteLock
+from app.services import globals
 
 # use this vector store to save everything in
-vector_store = VectorStore()
 rw_lock = ReadWriteLock()
+
+def get_vector_store():
+    """
+    Returns the global vector store instance.
+    """
+    if globals.vector_store is None:
+        globals.vector_store = VectorStore.create()
+        # Load the vector store from disk if it exists
+        globals.vector_store.l
+    return globals.vector_store
+
+vector_store = get_vector_store()
 
 def list_libraries_service():
     rw_lock.acquire_read()
@@ -30,7 +44,6 @@ def get_library_by_id_service(lib_id: str):
             id=library.id,
             name=library.name,
             metadata=library.metadata,
-            created_at=library.metadata['created_at'],
             total_chunks=len(library.chunks),
             index_name=library.index_name
         )                   
@@ -41,8 +54,9 @@ def get_library_by_id_service(lib_id: str):
 def create_library_service(libraryData: LibraryCreate):
     rw_lock.acquire_write()
     try:
+        index_instance = BallTreeIndex() if libraryData.index_name == 'BallTreeIndex' else BruteForceIndex()
         lib_id = vector_store.create_library(
-            libraryData.name, libraryData.metadata)
+            libraryData.name, index=index_instance, metadata=libraryData.metadata)
         library = vector_store.get_library(lib_id)
         library = LibraryResponse(
             id=library.id,

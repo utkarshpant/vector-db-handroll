@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 from app.api.library_router import router as library_router
-from app.api.dto.Library import LibraryCreate, LibraryListItem, LibraryResponse, UpsertChunksDto
 
 app = FastAPI()
 

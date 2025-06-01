@@ -30,7 +30,7 @@ class BallTreeIndex(BaseIndex):
         When a node holds <= `leaf_size` points, stop splitting and make it a leaf.
     """
 
-    name = "Ball Tree Index"
+    name = "BallTreeIndex"
 
     def __init__(self, leaf_size: int = 16) -> None:
         self.leaf_size = leaf_size

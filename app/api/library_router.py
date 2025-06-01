@@ -3,8 +3,8 @@ from fastapi import APIRouter, HTTPException
 from app.core.Filter import Filter
 from app.core.Chunk import EMBEDDING_DIM, Chunk
 from app.core.Library import Library
-from app.services.vector_store import VectorStore
-from app.services.library_service import (
+from app.services.VectorStore import VectorStore
+from app.services.LibraryService import (
     list_libraries_service,
     get_library_by_id_service,
     create_library_service,
