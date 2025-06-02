@@ -62,16 +62,22 @@ async def create_library_service(libraryData: LibraryCreate):
     try:
         vector_store = await get_vector_store()
         # Use the index_name if provided, else default
-        index_instance = None
-        if hasattr(libraryData, 'index_name') and libraryData.index_name:
-            if libraryData.index_name == 'BallTreeIndex':
-                index_instance = BallTreeIndex()
-            else:
-                index_instance = BruteForceIndex()
-        else:
-            index_instance = BruteForceIndex()
+        # index_instance = None
+        # index_name = None
+        # if hasattr(libraryData, 'index_name') and libraryData.index_name:
+        #     # Support both Enum and string
+        #     if hasattr(libraryData.index_name, 'value'):
+        #         index_name = libraryData.index_name.value
+        #     else:
+        #         index_name = str(libraryData.index_name)
+        #     if index_name == LibraryCreate.IndexNameEnum.BallTreeIndex.value:
+        #         index_instance = BallTreeIndex()
+        #     else:
+        #         index_instance = BruteForceIndex()
+        # else:
+        #     index_instance = BruteForceIndex()
         lib_id = vector_store.create_library(
-            libraryData.name, index=index_instance, metadata=libraryData.metadata)
+            libraryData.name, index_name="BallTreeIndex", metadata=libraryData.metadata)
         library = vector_store.get_library(lib_id)
         library = LibraryResponse(
             id=library.id,

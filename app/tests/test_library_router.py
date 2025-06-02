@@ -1,3 +1,4 @@
+from typing import Any
 import numpy as np
 import pytest
 from unittest.mock import patch, MagicMock
@@ -128,6 +129,25 @@ def test_create_library(mock_vector_store, sample_library_id, sample_library):
     assert lib["id"] == sample_library_id
     mock_vector_store.create_library.assert_called_once_with(
         "Test Library", {"description": "Test library for unit tests"}
+    )
+
+
+def test_create_library_with_index_name(mock_vector_store, sample_library_id, sample_library):
+    mock_vector_store.create_library.return_value = UUID(sample_library_id)
+    mock_vector_store.get_library.return_value = sample_library
+
+    # Test with index_name specified
+    response = client.post("/library/", json={
+        "name": "Test Library",
+        "metadata": {"description": "Test library for unit tests"},
+        "index_name": "BallTreeIndex"
+    })
+    assert response.status_code == 200
+    lib = response.json()
+    assert lib["name"] == "Test Library"
+    assert lib["id"] == sample_library_id
+    mock_vector_store.create_library.assert_called_with(
+        "Test Library", index=Any, metadata={"description": "Test library for unit tests"}
     )
 
 
@@ -669,3 +689,24 @@ def test_concurrent_upserts_no_race(tmp_path):
     chunks = response.json()
     # there should ideally be 5 chunks;
     assert len(chunks) >= 5
+
+
+def test_search_with_filters_api(mock_vector_store, sample_library_id, sample_library_with_chunks):
+    mock_vector_store.has_library.return_value = True
+    mock_vector_store.get_library.return_value = sample_library_with_chunks
+    mock_vector_store.search.return_value = [
+        (sample_library_with_chunks.chunks[0], 0.99),
+        (sample_library_with_chunks.chunks[1], 0.88)
+    ]
+    filters = {"text": {"contains": "Chunk 1"}}
+    query = np.random.rand(1536).tolist()
+    response = client.post(
+        f"/library/{sample_library_id}/search",
+        json={"query": query, "filters": filters}
+    )
+    assert response.status_code == 200
+    mock_vector_store.search.assert_called_once()
+    # Should filter results to only those matching the filter
+    # (the service layer does the filtering after calling search)
+    results = response.json()
+    assert any("Chunk 1" in chunk[0]['metadata']['text'] for chunk in results)

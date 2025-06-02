@@ -1,12 +1,10 @@
-import requests
+import httpx
 from typing import Any, Dict, List, Optional, Tuple
-
-from app.api.dto.Library import UpsertChunksDto
 
 class LibraryClient:
     """
-    Python client for the Stack-AI Vector Database REST API.
-    Provides methods to manage libraries and chunks, and to perform vector queries.
+    Async Python client for the Stack Vector Database's REST API.
+    Provides async methods to manage libraries and chunks, and to perform vector queries with optional filters.
     """
     def __init__(self, base_url: str = "http://localhost:8000"):
         """
@@ -14,26 +12,27 @@ class LibraryClient:
         :param base_url: Base URL of the API (default: http://localhost:8000)
         """
         self.base_url = base_url.rstrip("/")
+        self._client = httpx.AsyncClient()
 
-    def list_libraries(self) -> List[Dict[str, Any]]:
+    async def list_libraries(self) -> List[Dict[str, Any]]:
         """
         List all libraries.
         :return: List of library metadata dicts.
         """
-        resp = requests.get(f"{self.base_url}/library")
+        resp = await self._client.get(f"{self.base_url}/library/")
         resp.raise_for_status()
         return resp.json()
 
-    def get_library(self, library_id: str) -> Dict[str, Any]:
+    async def get_library(self, library_id: str) -> Dict[str, Any]:
         """
         Get details of a specific library.
         :param library_id: Library UUID
         """
-        resp = requests.get(f"{self.base_url}/library/{library_id}")
+        resp = await self._client.get(f"{self.base_url}/library/{library_id}/")
         resp.raise_for_status()
         return resp.json()
 
-    def create_library(self, name: str, metadata: Optional[dict] = None, index_name: Optional[str] = None) -> Dict[str, Any]:
+    async def create_library(self, name: str, metadata: Optional[Dict[str, Any]] = None, index_name: Optional[str] = None) -> Dict[str, Any]:
         """
         Create a new library.
         :param name: Name of the library
@@ -41,24 +40,25 @@ class LibraryClient:
         :param index_name: Optional index name (e.g., 'BruteForceIndex', 'BallTreeIndex')
         :return: Created library info
         """
-        data = {"name": name}
+        data: Dict[str, Any] = {"name": name}
         if metadata:
             data["metadata"] = metadata
         if index_name:
             data["index_name"] = index_name
-        resp = requests.post(f"{self.base_url}/library", json=data)
+        print(data, "data")
+        resp = await self._client.post(f"{self.base_url}/library/", json=data)
         resp.raise_for_status()
         return resp.json()
 
-    def delete_library(self, library_id: str) -> None:
+    async def delete_library(self, library_id: str) -> None:
         """
         Delete a library by its ID.
         :param library_id: Library UUID
         """
-        resp = requests.delete(f"{self.base_url}/library/{library_id}")
+        resp = await self._client.delete(f"{self.base_url}/library/{library_id}/")
         resp.raise_for_status()
 
-    def upsert_chunks(self, library_id: str, chunks: List[dict], filters: Optional[dict] = None) -> Dict[str, Any]:
+    async def upsert_chunks(self, library_id: str, chunks: List[Dict[str, Any]], filters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Upsert (insert or update) chunks in a library, with optional filters.
         :param library_id: Library UUID
@@ -66,34 +66,34 @@ class LibraryClient:
         :param filters: Optional filters dict
         :return: API response dict
         """
-        data = {"chunks": chunks}
+        data: Dict[str, Any] = {"chunks": chunks}
         if filters:
             data["filters"] = filters
-        resp = requests.put(f"{self.base_url}/library/{library_id}/chunks", json=data)
+        resp = await self._client.put(f"{self.base_url}/library/{library_id}/chunks", json=data)
         resp.raise_for_status()
         return resp.json()
 
-    def list_chunks(self, library_id: str) -> List[Dict[str, Any]]:
+    async def list_chunks(self, library_id: str) -> List[Dict[str, Any]]:
         """
         List all chunks in a library.
         :param library_id: Library UUID
         :return: List of chunk dicts
         """
-        resp = requests.get(f"{self.base_url}/library/{library_id}/chunks")
+        resp = await self._client.get(f"{self.base_url}/library/{library_id}/chunks")
         resp.raise_for_status()
         return resp.json()
 
-    def count_chunks(self, library_id: str) -> int:
+    async def count_chunks(self, library_id: str) -> int:
         """
         Get the number of chunks in a library.
         :param library_id: Library UUID
         :return: Number of chunks
         """
-        resp = requests.get(f"{self.base_url}/library/{library_id}/count")
+        resp = await self._client.get(f"{self.base_url}/library/{library_id}/count")
         resp.raise_for_status()
         return resp.json().get("count", 0)
 
-    def search(self, library_id: str, query_vector: List[float], k: int = 5, filters: Optional[dict] = None) -> List[Tuple[str, float]]:
+    async def search(self, library_id: str, query_vector: List[float], k: int = 5, filters: Optional[Dict[str, Any]] = None) -> List[Tuple[str, float]]:
         """
         Search the vector index for the top-k most similar chunks, with optional filters.
         :param library_id: Library UUID
@@ -102,19 +102,25 @@ class LibraryClient:
         :param filters: Optional filters dict
         :return: List of (chunk_id, similarity) tuples
         """
-        data = {"query": query_vector}
+        data: Dict[str, Any] = {"query": query_vector}
         if filters:
             data["filters"] = filters
-        resp = requests.post(f"{self.base_url}/library/{library_id}/search?k={k}", json=data)
+        resp = await self._client.post(f"{self.base_url}/library/{library_id}/search?k={k}", json=data)
         resp.raise_for_status()
         return resp.json()
 
-    def library_exists(self, library_id: str) -> bool:
+    async def library_exists(self, library_id: str) -> bool:
         """
         Check if a library exists by its ID.
         :param library_id: Library UUID
         :return: True if the library exists, False otherwise
         """
-        resp = requests.get(f"{self.base_url}/library/{library_id}/exists")
+        resp = await self._client.get(f"{self.base_url}/library/{library_id}/exists")
         resp.raise_for_status()
         return resp.json().get("exists", False)
+
+    async def aclose(self):
+        """
+        Close the HTTP client session. Useful to close the pool of connections after all work is done.
+        """
+        await self._client.aclose()

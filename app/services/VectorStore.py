@@ -8,7 +8,7 @@ import aiofiles
 import asyncio
 import os
 
-from app.api.dto.Library import Chunk
+from app.api.dto.Library import Chunk, IndexName
 from app.core.Chunk import Chunk
 from app.core.Library import Library
 from app.indexes.BallTreeIndex import BallTreeIndex
@@ -56,8 +56,9 @@ class VectorStore:
             self._library_locks[lib_id] = ReadWriteLock()
         return self._library_locks[lib_id]
 
-    def create_library(self, name: str, index: BallTreeIndex | BruteForceIndex = BruteForceIndex(), metadata: dict | None = None) -> UUID:
-        lib = Library(name=name, metadata=metadata or {})
+    def create_library(self, name: str, index_name: str, metadata: dict | None = None) -> UUID:
+        index = BruteForceIndex() if index_name == IndexName.BruteForceIndex.value else BallTreeIndex()
+        lib = Library(name=name, metadata=metadata or {}, index=index)
         lib.build_index(index)
         self._libraries[lib.id] = lib
         self._library_locks[lib.id] = ReadWriteLock()  # Add lock for new library

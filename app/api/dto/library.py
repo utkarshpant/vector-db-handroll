@@ -21,17 +21,17 @@ class LibraryListItem(BaseModel):
         from_attributes = True
         arbitrary_types_allowed = True
 
+class IndexName(str, Enum):
+        BruteForceIndex = "BruteForceIndex"
+        BallTreeIndex = "BallTreeIndex"
+
 class LibraryCreate(BaseModel):
     """
     Data Transfer Object (DTO) for creating a library.
     """
     name: str = Field(..., description="Name of the Library")
     metadata: Optional[dict[str, Any]] = Field(default_factory=dict, description="Metadata associated with the Library")
-    class IndexNameEnum(str, Enum):
-        BruteForceIndex = "BruteForceIndex"
-        BallTreeIndex = "BallTreeIndex"
-
-    index_name: Optional[IndexNameEnum] = Field(
+    index_name: Optional[IndexName] = Field(
         None, description="Name of the index to be used for this Library, if applicable"
     )
     
