@@ -1,32 +1,44 @@
-import os, time, textwrap, pytest, numpy as np
+import numpy as np
+import pytest
+import os
+import textwrap
 from typing import List
-from app.utils.openai import client
 from uuid import uuid4
-
 from app.services.VectorStore import VectorStore
 from app.indexes.BallTreeIndex import BallTreeIndex
 from app.indexes.BruteForceIndex import BruteForceIndex
-from app.core.Chunk import Chunk
+from app.core.Chunk import EMBEDDING_DIM, Chunk
+import cohere
+from dotenv import load_dotenv
 
-OPENAI_MODEL = "text-embedding-3-small"
-PARA_SPLIT   = "\n"                      # paragraph splitter
+load_dotenv()
 
+COHERE_API_KEY = os.getenv("COHERE_API_KEY")
+PARA_SPLIT   = "\n" # paragraph split on \n
 
-def embed_openai(texts: list[str]) -> list[List[float]]:
+cohere_client = cohere.ClientV2(COHERE_API_KEY) if COHERE_API_KEY else None
+
+def embed_cohere(texts: list[str]) -> list[List[float]]:
     """Batch embed; returns list[np.ndarray]."""
-    res = client.embeddings.create(
-        model=OPENAI_MODEL,
-        input=texts,
-        encoding_format="float"
+    if not cohere_client:
+        raise RuntimeError("COHERE_API_KEY not set or Cohere client not initialized.")
+    res = cohere_client.embed(
+        texts=texts,
+        model="embed-v4.0",
+        embedding_types=["float"],
+        output_dimension=EMBEDDING_DIM,
+        input_type="search_query"
     )
-    return [np.asarray(e.embedding, dtype=np.float32).tolist() for e in res.data]
+    # Cohere returns a .embeddings attribute with .float_ as a list of lists
+    if not hasattr(res.embeddings, 'float_') or res.embeddings.float_ is None:
+        raise RuntimeError("Cohere did not return embeddings. Check your API key and quota.")
+    return [np.asarray(e, dtype=np.float32).tolist() for e in res.embeddings.float_]
 
 
 @pytest.mark.integration
-def test_end_to_end_openai():
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        pytest.skip("OPENAI_API_KEY not set")
+def test_end_to_end_cohere():
+    if not COHERE_API_KEY:
+        pytest.skip("COHERE_API_KEY not set")
 
     store = VectorStore()
 
@@ -42,26 +54,26 @@ def test_end_to_end_openai():
         Ball-tree and KD-tree are classical space-partitioning indexes.
     """).strip()
 
-    lib_a = store.create_library("A")
+    lib_a = store.create_library("A", index_name="BallTreeIndex")
     lib_a_obj = store.get_library(lib_a)
 
     paragraphs_a = doc_text_a.split(PARA_SPLIT)
-    embeds_a = embed_openai(paragraphs_a)
+    embeds_a = embed_cohere(paragraphs_a)
 
     lib_a_obj.upsert_chunks([Chunk(embedding=emb, metadata={"text": text}) for text, emb in zip(paragraphs_a, embeds_a)])
     store.build_index(lib_a, BallTreeIndex)
 
-    lib_b = store.create_library("B")
+    lib_b = store.create_library("B", index_name="BruteForceIndex")
     lib_b_obj = store.get_library(lib_b)
 
     paragraphs_b = doc_text_b.split(PARA_SPLIT)
-    embeds_b = embed_openai(paragraphs_b)
+    embeds_b = embed_cohere(paragraphs_b)
 
     lib_b_obj.upsert_chunks([Chunk(embedding=emb, metadata={"text": text}) for text, emb in zip(paragraphs_b, embeds_b)])
     store.build_index(lib_b, BruteForceIndex)
 
     query = "Pack how many liquor jugs?"
-    q_emb  = embed_openai([query])[0]
+    q_emb  = embed_cohere([query])[0]
 
     hits_a = store.search(lib_a, q_emb, k=2)
     hits_b = store.search(lib_b, q_emb, k=2)

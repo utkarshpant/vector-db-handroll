@@ -54,11 +54,11 @@ def test_two_libraries_isolated(vector_store, fake_embed, index_cls):
     • Ensure search returns only chunks from the queried lib.
     """
     # lib A uses the injected index_cls
-    lib_a = vector_store.create_library("A")
+    lib_a = vector_store.create_library("A", index_name="BallTreeIndex")
     chunks_A = _populate_library(vector_store, lib_a, fake_embed, "A")
     vector_store.build_index(lib_a, index_cls=index_cls)
 
-    lib_b = vector_store.create_library("B")
+    lib_b = vector_store.create_library("B", index_name="BruteForceIndex")
     chunks_B = _populate_library(vector_store, lib_b, fake_embed, "B")
     vector_store.build_index(lib_b)
     target_text = next(iter(chunks_A.values()))

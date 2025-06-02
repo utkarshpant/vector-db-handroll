@@ -19,12 +19,36 @@ A modular, Pythonic vector database for RAG and NLP tasks, built with FastAPI an
 
 1. Ensure Docker is installed.
 2. Clone the repository and `cd` into it.
-3. Build and start the container:
+3. **Set your Cohere API key as an environment variable:**
+   ```sh
+   export COHERE_API_KEY=your-cohere-api-key
+   ```
+   (On Windows CMD: `set COHERE_API_KEY=your-cohere-api-key`)
+
+   Alternatively, you can create a `.env` file in the root directory with the following content:
+   ```
+   COHERE_API_KEY=your-cohere-api-key
+   ```
+4. Also make sure to set the `SNAPSHOT_PATH` environment variable to the path where you want the vector store to persist its data. For example:
+   ```sh
+   export SNAPSHOT_PATH=/path/to/your/snapshot/file.pkl
+   ```
+   (On Windows CMD: `set SNAPSHOT_PATH=C:\path\to\your\snapshot\file.pkl`)
+
+   Alternatively, just as above, you can add it to your .env file and it will be picked up:
+   ```
+   SNAPSHOT_PATH=/path/to/your/snapshot/file.pkl
+   ```
+
+   For local development, the recommended env var is `SNAPSHOT_PATH="../vectorstore_snapshot.pkl"`. When running on Docker, the Docker Compose file sets the path to `/app/vectorstore_data/vectorstore_snapshot.pkl` on the volume that is mounted for the vector store data.
+   
+
+5. Build and start the container:
    ```sh
    docker compose up --build -d
    ```
-4. Access the API at [http://localhost:8000](http://localhost:8000).
-5. Stop the container with:
+6. Access the API at [http://localhost:8000](http://localhost:8000).
+7. Stop the container with:
    ```sh
    docker compose down
    ```

@@ -1,3 +1,4 @@
+import asyncio
 import os
 from app.api.dto.Library import IndexName, LibraryCreate
 from app.core.Chunk import EMBEDDING_DIM
@@ -16,16 +17,20 @@ def get_embedding(texts):
     return response.embeddings.float_
 
 
-import asyncio
-
 async def main():
+
+    if not os.getenv("COHERE_API_KEY"):
+        raise ValueError(
+            "COHERE_API_KEY environment variable is not set. Please set it before starting the server.")
+
     chunk_text = [
         "Cosmic-scale gravity occasionally acts like an enormous distorting magnifying glass. When a massive object such as a galactic black hole or a dark-matter halo sits between Earth and a more distant light source, its gravity warps spacetime enough to bend and refocus the light, producing arcs, rings, or duplicated images of the background object. Astronomers exploit these \"gravitational lenses\" to weigh invisible matter and to peer deeper into the early universe than any telescope could manage alone. Because the lensing effect depends only on mass, not composition, it has become one of the cleanest ways to map the otherwise elusive distribution of dark matter across cosmic filaments.",
         "Far removed from astronomical wonders, the engineers of ancient Rome proved equally adept at confronting a stubborn challenge: how to move fresh water over long distances without pumps. Their answer -- the aqueduct -- combined precisely graded channels, massive stone arcades, and ingenious siphon systems that could hop valleys or burrow mountains. Rome's Aqua Claudia, for instance, descended barely a few centimeters per kilometer yet delivered enough water daily to supply hundreds of public fountains, baths, and private homes. The durable concrete linings and self-cleaning flow rates they perfected two millennia ago remain case studies in low-maintenance civil engineering.",
         "Meanwhile, in kitchens worldwide, an apparently humble jar of flour and water sustains a thriving microbial ecosystem that bakers call a sourdough starter. Wild strains of Saccharomyces yeasts coexist with Lactobacillus bacteria, feeding on complex carbohydrates and excreting carbon dioxide, ethanol, and lactic acid. The CO2 inflates the dough's gluten network while the acids contribute the bread's trademark tang and extend its shelf life by deterring spoilage organisms. Temperature, refresh interval, and flour choice subtly steer the community's balance, giving each starter -- and the loaves it leavens -- a distinctive flavor fingerprint that commercial baker's yeast cannot replicate.",
     ]
 
-    chunked_on_period = [sentence.strip() for text in chunk_text if text.strip() for sentence in text.strip().split('.') if sentence.strip()]
+    chunked_on_period = [sentence.strip() for text in chunk_text if text.strip(
+    ) for sentence in text.strip().split('.') if sentence.strip()]
     embeds = get_embedding(chunked_on_period)
     if embeds is None:
         raise ValueError("Failed to get embeddings from Cohere API.")

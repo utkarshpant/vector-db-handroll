@@ -5,6 +5,10 @@ from starlette.responses import FileResponse
 from app.api.library_router import router as library_router
 from app.services import globals
 from app.services.VectorStore import VectorStore
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -28,6 +32,8 @@ app.include_router(library_router, prefix="/library", tags=["libraries"])
 
 @app.on_event("startup")
 async def startup_event():
+    if not os.getenv("SNAPSHOT_PATH"):
+        raise ValueError("SNAPSHOT_PATH environment variable is not set. Please set it before starting the server.")
     globals.vector_store = await VectorStore.create()
 
 app.mount("/ui", StaticFiles(directory="./ui/dist/", html=True), name="static")
