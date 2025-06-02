@@ -19,7 +19,7 @@ A modular, Pythonic vector database for RAG and NLP tasks, built with FastAPI an
 
 1. Ensure Docker is installed.
 2. Clone the repository and `cd` into it.
-3. **Set your Cohere API key as an environment variable:**
+3. **Development only:** A Cohere API key is required for the Demo and the Pytest integration tests. Set your Cohere API key as an environment variable:
    ```sh
    export COHERE_API_KEY=your-cohere-api-key
    ```
