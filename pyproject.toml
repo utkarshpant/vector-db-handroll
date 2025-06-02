@@ -3,7 +3,7 @@ name = "stack-ai"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Utkarsh Pant",email = "utkarsh.pant@outlook.com"}
+    {name = "Utkarsh Pant",email = "utkarsh.pant97@outlook.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.13,<4.0"
