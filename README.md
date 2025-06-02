@@ -46,10 +46,15 @@ A modular, Pythonic vector database for RAG and NLP tasks, built with FastAPI an
 - All consumers (API endpoints, services) access the same, ready instance via `await VectorStore.get_instance()`.
 - Disk I/O (loading and saving snapshots) is async wherever possible.
 
+#### Singleton design choice
+
+It was important for the Vector Database to be decoupled from the REST API, since that is more of an implementation detail and can be swapped out for something else. Thus, it was a conscious choice to not use FastAPI's `Depends` dependency injection or similar API's to manage the data store. However, FastAPI's lifecycle methods like "startup" are used to kick off the snapshotting coroutine that runs async once the server is started. The singleton pattern makes it simple to ensure that only a single vector store instance is running at any time, and no additional ones are instantiated accidentally due to code errors.
+
 ### Read/Write Locking
 - All vector store operations are wrapped in a custom `ReadWriteLock` (see `utils/read_write_lock.py`).
 - Multiple readers can access the store concurrently; only one writer can mutate the store at a time.
 - Locking is handled in the service layer, __not__ the API layer, since that can be swapped out later for something else, but the underlying Service can still mitigate data races.
+- `asyncio` locks were used for this implementation since they are better suited to concurrent execution, as compared to locks provided by `threads`.
 
 ### Disk Persistence
 - The vector store persists all data to disk using `pickle` files, and loads from this pickle file on the next startup.
