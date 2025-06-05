@@ -36,7 +36,6 @@ def sample_library(sample_library_id):
         id=UUID(sample_library_id),
         name="Test Library",
         metadata={"description": "Test library for unit tests"},
-        created_at=datetime.now(),
     )
 
 
@@ -128,7 +127,7 @@ def test_create_library(mock_vector_store, sample_library_id, sample_library):
     assert lib["name"] == "Test Library"
     assert lib["id"] == sample_library_id
     mock_vector_store.create_library.assert_called_once_with(
-        "Test Library", {"description": "Test library for unit tests"}
+        "Test Library", index_name="BallTreeIndex", metadata={"description": "Test library for unit tests"}
     )
 
 
@@ -147,7 +146,7 @@ def test_create_library_with_index_name(mock_vector_store, sample_library_id, sa
     assert lib["name"] == "Test Library"
     assert lib["id"] == sample_library_id
     mock_vector_store.create_library.assert_called_with(
-        "Test Library", index=Any, metadata={"description": "Test library for unit tests"}
+        "Test Library", index_name="BallTreeIndex", metadata={"description": "Test library for unit tests"}
     )
 
 
@@ -617,19 +616,17 @@ def test_delete_chunks_with_numeric_filters(mock_vector_store, sample_library_id
     response = client.post(
         f"/library/{sample_library_id}/chunks/delete",
         json={"filters": filters}
-    )
-
-    # Assert
+    )    # Assert
     assert response.status_code == 200
     mock_library.get_all_chunks.assert_called_once()
-    # Should call delete_chunks twice for chunks with priority >= 5
+    # Should call delete_chunks once for chunks with priority >= 5
     assert mock_library.delete_chunks.call_count == 1
     # Verify the correct chunk IDs were passed
-    call_args_list = [call[0][0][0]
-                      for call in mock_library.delete_chunks.call_args_list]
-    assert chunk_id_1 in call_args_list  # priority 8
-    assert chunk_id_3 in call_args_list  # priority 5
-    assert chunk_id_2 not in call_args_list  # priority 3
+    call_args = mock_library.delete_chunks.call_args
+    deleted_chunk_ids = call_args[0][0]  # First positional argument (chunk_ids list)
+    assert chunk_id_1 in deleted_chunk_ids  # priority 8
+    assert chunk_id_3 in deleted_chunk_ids  # priority 5
+    assert chunk_id_2 not in deleted_chunk_ids  # priority 3
 
 
 def test_delete_chunks_library_not_found(mock_vector_store, sample_library_id):
